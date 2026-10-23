@@ -35,7 +35,7 @@ input,select,textarea{font-size:16px} /* menos de 16px faz o iOS dar zoom ao foc
 button.main{background:#d22;border-color:#d22;font-weight:600;font-size:18px}
 #run{touch-action:none;display:none;position:fixed;inset:0;background:#000}
 #cam{position:absolute;left:0;top:0;width:100%;height:100%;object-fit:fill;background:#000}
-#ov{position:absolute;left:0;right:0;top:44dvh;height:42dvh;overflow:hidden;pointer-events:none;
+#ov{position:absolute;left:0;right:0;top:var(--ovt,44dvh);height:42dvh;overflow:hidden;pointer-events:none;
   background:linear-gradient(color-mix(in srgb,var(--bg) 70%,transparent) 80%,transparent)}
 #rl{position:absolute;left:0;right:0;top:6dvh;height:calc(var(--fs)*var(--lh));background:rgba(255,255,255,.14);border-block:1px solid rgba(255,255,255,.4);display:none}
 #txt{position:relative;max-width:1100px;margin-inline:auto;padding:6dvh var(--mx) 60dvh;font-size:var(--fs);line-height:var(--lh);font-weight:600;color:var(--fg);font-family:var(--ff);will-change:transform}
@@ -99,6 +99,8 @@ button.main{background:#d22;border-color:#d22;font-weight:600;font-size:18px}
     <label><span data-i18n="margins">Margens</span> <input id="cmx" type="range" min="0" max="60" value="20"></label>
     <label><span data-i18n="mh">Espelhar horizontal</span> <input type="checkbox" id="cmh"></label>
     <label><span data-i18n="mv">Espelhar vertical</span> <input type="checkbox" id="cmv"></label>
+    <label><span data-i18n="pos">Posição do texto</span> <select id="cpos"><option value="mid" data-i18n="posMid">Meio da tela</option><option value="top" data-i18n="posTop">Topo (perto da câmera)</option></select></label>
+    <label><span data-i18n="paged">Rolagem por página</span> <input type="checkbox" id="cpage"></label>
     <label><span data-i18n="clock">Contador de tempo</span> <input type="checkbox" id="cclk"></label>
     <label><span data-i18n="rl">Linha de leitura</span> <input type="checkbox" id="crl"></label>
     <label><span data-i18n="dys">Fonte para dislexia</span> <input type="checkbox" id="cdys"></label>
@@ -130,7 +132,7 @@ const store = (k, v) => { try { return v === undefined ? localStorage.getItem(k)
 
 const LANGS = {
   pt: {
-    sync: 'Sincronizar', syncOk: 'Sincronizado', syncFail: 'Falha na sincronização', syncUrl: 'Endereço da API (ex.: https://api.seudominio.com)', syncEmail: 'E-mail', syncPass: 'Senha', syncNew: 'Conta não encontrada. Criar com esses dados?', quotaOut: 'Limite diário de vídeos do seu plano atingido. Volte amanhã.', quotaCut: 'Limite de tempo do plano atingido: gravação encerrada.', aiBtn: '✨ IA', aiTopic: 'Tema do roteiro (ou deixe o texto no editor para a IA ajustar ao tempo):', aiMin: 'Duração em minutos:', aiBusy: 'Gerando…', aiFail: 'Não foi possível gerar o roteiro.', aiOut: 'Créditos de IA do mês esgotados.', aiLeft: n => `Roteiro gerado. Créditos de IA restantes: ${n}`, newScript: '+ Novo roteiro', import: 'Importar', untitled: 'Sem título', myScript: 'Meu roteiro',
+    sync: 'Sincronizar', syncOk: 'Sincronizado', syncFail: 'Falha na sincronização', syncUrl: 'Endereço da API (ex.: https://api.seudominio.com)', syncEmail: 'E-mail', syncPass: 'Senha', syncNew: 'Conta não encontrada. Criar com esses dados?', quotaOut: 'Limite diário de vídeos do seu plano atingido. Volte amanhã.', quotaCut: 'Limite de tempo do plano atingido: gravação encerrada.', aiBtn: '✨ IA', aiTopic: 'Tema do roteiro (ou deixe o texto no editor para a IA ajustar ao tempo):', aiMin: 'Duração em minutos:', aiBusy: 'Gerando…', aiFail: 'Não foi possível gerar o roteiro.', aiOut: 'Créditos de IA do mês esgotados.', aiLeft: n => `Roteiro gerado. Créditos de IA restantes: ${n}`, pos: 'Posição do texto', posMid: 'Meio da tela', posTop: 'Topo (perto da câmera)', paged: 'Rolagem por página', newScript: '+ Novo roteiro', import: 'Importar', untitled: 'Sem título', myScript: 'Meu roteiro',
     emptyList: 'Nenhum roteiro ainda. Toque em "Novo roteiro".', words: n => `${n} palavras`,
     titlePh: 'Título do roteiro', scriptPh: 'Cole ou escreva o roteiro aqui',
     mode: 'Modo', mSpeed: 'Velocidade', mTime: 'Tempo fixo', mWpm: 'Palavras por minuto', mSpeech: 'Acompanhar minha fala',
@@ -153,7 +155,7 @@ const LANGS = {
     recReady: 'Gravação pronta. Toque em Salvar.'
   },
   en: {
-    sync: 'Sync', syncOk: 'Synced', syncFail: 'Sync failed', syncUrl: 'API address (e.g. https://api.yourdomain.com)', syncEmail: 'Email', syncPass: 'Password', syncNew: 'Account not found. Create it with these details?', quotaOut: 'Daily video limit for your plan reached. Come back tomorrow.', quotaCut: 'Plan time limit reached: recording stopped.', aiBtn: '✨ AI', aiTopic: 'Script topic (or leave text in the editor for the AI to fit to the time):', aiMin: 'Duration in minutes:', aiBusy: 'Generating…', aiFail: 'Could not generate the script.', aiOut: 'Monthly AI credits used up.', aiLeft: n => `Script generated. AI credits left: ${n}`, newScript: '+ New script', import: 'Import', untitled: 'Untitled', myScript: 'My script',
+    sync: 'Sync', syncOk: 'Synced', syncFail: 'Sync failed', syncUrl: 'API address (e.g. https://api.yourdomain.com)', syncEmail: 'Email', syncPass: 'Password', syncNew: 'Account not found. Create it with these details?', quotaOut: 'Daily video limit for your plan reached. Come back tomorrow.', quotaCut: 'Plan time limit reached: recording stopped.', aiBtn: '✨ AI', aiTopic: 'Script topic (or leave text in the editor for the AI to fit to the time):', aiMin: 'Duration in minutes:', aiBusy: 'Generating…', aiFail: 'Could not generate the script.', aiOut: 'Monthly AI credits used up.', aiLeft: n => `Script generated. AI credits left: ${n}`, pos: 'Text position', posMid: 'Middle of the screen', posTop: 'Top (near the camera)', paged: 'Page-by-page scroll', newScript: '+ New script', import: 'Import', untitled: 'Untitled', myScript: 'My script',
     emptyList: 'No scripts yet. Tap "New script".', words: n => `${n} words`,
     titlePh: 'Script title', scriptPh: 'Paste or write your script here',
     mode: 'Mode', mSpeed: 'Speed', mTime: 'Fixed time', mWpm: 'Words per minute', mSpeech: 'Follow my speech',
@@ -176,7 +178,7 @@ const LANGS = {
     recReady: 'Recording ready. Tap Save.'
   },
   es: {
-    sync: 'Sincronizar', syncOk: 'Sincronizado', syncFail: 'Error de sincronización', syncUrl: 'Dirección de la API (ej.: https://api.tudominio.com)', syncEmail: 'Correo', syncPass: 'Contraseña', syncNew: 'Cuenta no encontrada. ¿Crearla con estos datos?', quotaOut: 'Límite diario de videos de tu plan alcanzado. Vuelve mañana.', quotaCut: 'Límite de tiempo del plan alcanzado: grabación detenida.', aiBtn: '✨ IA', aiTopic: 'Tema del guion (o deja el texto en el editor para que la IA lo ajuste al tiempo):', aiMin: 'Duración en minutos:', aiBusy: 'Generando…', aiFail: 'No se pudo generar el guion.', aiOut: 'Créditos de IA del mes agotados.', aiLeft: n => `Guion generado. Créditos de IA restantes: ${n}`, newScript: '+ Nuevo guion', import: 'Importar', untitled: 'Sin título', myScript: 'Mi guion',
+    sync: 'Sincronizar', syncOk: 'Sincronizado', syncFail: 'Error de sincronización', syncUrl: 'Dirección de la API (ej.: https://api.tudominio.com)', syncEmail: 'Correo', syncPass: 'Contraseña', syncNew: 'Cuenta no encontrada. ¿Crearla con estos datos?', quotaOut: 'Límite diario de videos de tu plan alcanzado. Vuelve mañana.', quotaCut: 'Límite de tiempo del plan alcanzado: grabación detenida.', aiBtn: '✨ IA', aiTopic: 'Tema del guion (o deja el texto en el editor para que la IA lo ajuste al tiempo):', aiMin: 'Duración en minutos:', aiBusy: 'Generando…', aiFail: 'No se pudo generar el guion.', aiOut: 'Créditos de IA del mes agotados.', aiLeft: n => `Guion generado. Créditos de IA restantes: ${n}`, pos: 'Posición del texto', posMid: 'Centro de la pantalla', posTop: 'Arriba (cerca de la cámara)', paged: 'Desplazamiento por página', newScript: '+ Nuevo guion', import: 'Importar', untitled: 'Sin título', myScript: 'Mi guion',
     emptyList: 'Aún no hay guiones. Toca "Nuevo guion".', words: n => `${n} palabras`,
     titlePh: 'Título del guion', scriptPh: 'Pega o escribe el guion aquí',
     mode: 'Modo', mSpeed: 'Velocidad', mTime: 'Tiempo fijo', mWpm: 'Palabras por minuto', mSpeech: 'Seguir mi voz',
@@ -338,13 +340,14 @@ function saveCur() {
 }
 $('new').onclick = () => { const s = { id: Date.now(), title: '', text: '', at: Date.now() }; scripts.push(s); persist(); editScript(s.id); $('title').focus(); };
 const themes = [['#ffffff', '#000000', '#ffd23f'], ['#ffe14d', '#000000', '#ffffff'], ['#000000', '#ffffff', '#c00000'], ['#7CFC00', '#000000', '#ffffff']];
-let look = { t: 0, fg: '#ffffff', bg: '#000000', hl: '#ffd23f', lh: 1.35, mx: 20, rl: false, clk: true, dys: false, mh: false, mv: false };
+let look = { t: 0, fg: '#ffffff', bg: '#000000', hl: '#ffd23f', lh: 1.35, mx: 20, rl: false, clk: true, dys: false, mh: false, mv: false, pos: 'mid', page: false };
 try { Object.assign(look, JSON.parse(store('tp.look'))); } catch {}
 let dysFont = null;
 function applyLook() {
   const r = document.documentElement.style;
   r.setProperty('--fg', look.fg); r.setProperty('--bg', look.bg); r.setProperty('--hl', look.hl);
   r.setProperty('--lh', look.lh); r.setProperty('--mx', look.mx + 'px');
+  r.setProperty('--ovt', look.pos === 'top' ? 'env(safe-area-inset-top,0px)' : '44dvh');
   $('ov').style.transform = `scale(${look.mh ? -1 : 1},${look.mv ? -1 : 1})`;
   $('rl').style.display = look.rl ? 'block' : 'none';
   $('clk').style.display = look.clk ? 'block' : 'none';
@@ -354,7 +357,7 @@ function applyLook() {
   }
   r.setProperty('--ff', (look.dys ? "'OpenDyslexic'," : '') + 'system-ui,-apple-system,sans-serif');
   $('theme').value = look.t; $('cfg').value = look.fg; $('cbg').value = look.bg; $('chl').value = look.hl;
-  $('clh').value = look.lh; $('cmx').value = look.mx; $('cmh').checked = look.mh; $('cmv').checked = look.mv; $('crl').checked = look.rl; $('cclk').checked = look.clk; $('cdys').checked = look.dys;
+  $('clh').value = look.lh; $('cmx').value = look.mx; $('cmh').checked = look.mh; $('cmv').checked = look.mv; $('cpos').value = look.pos; $('cpage').checked = look.page; $('crl').checked = look.rl; $('cclk').checked = look.clk; $('cdys').checked = look.dys;
   store('tp.look', JSON.stringify(look));
 }
 $('theme').onchange = () => { const t = $('theme').value; if (t !== 'x') { [look.fg, look.bg, look.hl] = themes[t]; look.t = +t; applyLook(); } };
@@ -363,6 +366,8 @@ $('clh').oninput = () => { look.lh = +$('clh').value; applyLook(); };
 $('cmx').oninput = () => { look.mx = +$('cmx').value; applyLook(); };
 $('cmh').onchange = () => { look.mh = $('cmh').checked; applyLook(); };
 $('cmv').onchange = () => { look.mv = $('cmv').checked; applyLook(); };
+$('cpos').onchange = () => { look.pos = $('cpos').value; applyLook(); };
+$('cpage').onchange = () => { look.page = $('cpage').checked; applyLook(); };
 $('cclk').onchange = () => { look.clk = $('cclk').checked; applyLook(); };
 $('crl').onchange = () => { look.rl = $('crl').checked; applyLook(); };
 $('cdys').onchange = () => { look.dys = $('cdys').checked; applyLook(); };
@@ -530,6 +535,13 @@ const maxY = () => $('txt').scrollHeight - $('ov').clientHeight * 0.6;
   });
 })();
 
+// pagina = altura visivel menos uma linha de contexto; a linha de leitura volta ao topo a cada virada
+function shownY() {
+  if (!look.page) return y;
+  const P = Math.max(40, $('ov').clientHeight - parseFloat(getComputedStyle($('txt')).fontSize) * look.lh * 2);
+  return Math.floor(y / P) * P;
+}
+
 function frame(t) {
   if (!running) return;
   const dt = Math.min(0.1, (t - last) / 1000);
@@ -550,7 +562,7 @@ function frame(t) {
     y += (target - y) * Math.min(1, dt * 4);
   }
   y = Math.max(0, Math.min(y, max));
-  $('txt').style.transform = `translateY(${-y}px)`;
+  $('txt').style.transform = `translateY(${-shownY()}px)`;
   if (look.clk && t - clkAt > 500) {
     clkAt = t;
     const left = max <= 0 ? 0 : m === 'speed' ? (max - y) / speed : m === 'time' ? (max - y) / (max / dur) : words.length * (1 - y / max) / wpm * 60;
