@@ -8,6 +8,7 @@
 <meta name="apple-mobile-web-app-title" content="Teleprompter">
 <meta name="theme-color" content="#000000">
 <link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
 <title>Teleprompter</title>
 <style>
 :root{--fs:36px;--fg:#ffffff;--bg:#000000;--hl:#ffd23f;--lh:1.35;--mx:20px;--ff:system-ui,-apple-system,sans-serif;color-scheme:dark}
@@ -623,6 +624,7 @@ async function save(f = file) {
 
 applyLang();
 showList();
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 $('uil').onchange = () => { lang = $('uil').value; store('tp.lang', lang); store('tp.slang', ''); applyLang(); showList(); };
 $('recsBtn').onclick = showRecs;
 $('recsBack').onclick = showList;
