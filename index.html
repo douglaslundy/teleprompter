@@ -116,22 +116,36 @@ function startScroll() {
 }
 function stopScroll() { running = false; if (wake) { wake.release().catch(() => {}); wake = null; } }
 
+// Alinha o fim do que foi ouvido com o roteiro. Usa só sequências de palavras seguidas, então
+// repetir o mesmo trecho dá o mesmo resultado e palavra comum solta não faz o texto pular.
+function locate(heard) {
+  const tail = heard.slice(-6);
+  let best = -1, bestScore = 0;
+  for (let j = Math.max(0, idx - 1); j < Math.min(idx + 40, words.length); j++) {
+    let score = 0, a = j, b = tail.length - 1;
+    while (b >= 0 && a >= 0) {
+      if (!words[a].n) { a--; continue; }
+      if (words[a].n !== tail[b]) break;
+      score++; a--; b--;
+    }
+    const far = j - idx > 12;
+    const ok = score >= 3 || (!far && (score >= 2 || (score === 1 && tail[tail.length - 1].length >= 4 && j - idx <= 3)));
+    if (ok && score > bestScore) { best = j; bestScore = score; }
+  }
+  return best;
+}
+
 function startSpeech() {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SR) return say('Este navegador não reconhece fala. Use o modo Velocidade.');
   rec = new SR();
   rec.lang = 'pt-BR'; rec.continuous = true; rec.interimResults = true;
   rec.onresult = e => {
-    const heard = Array.from(e.results).map(r => r[0].transcript).join(' ').split(/\s+/).map(norm).filter(w => w.length > 2).slice(-4);
-    let pos = idx;
-    for (const h of heard) {
-      for (let j = pos; j < Math.min(pos + 15, words.length); j++) {
-        if (words[j].n === h) { pos = j + 1; break; }
-      }
-    }
-    if (pos > idx) {
+    const heard = Array.from(e.results).map(r => r[0].transcript).join(' ').split(/\s+/).map(norm).filter(Boolean);
+    const j = locate(heard);
+    if (j >= 0 && j + 1 > idx) {
       words[idx]?.el.classList.remove('on');
-      idx = Math.min(pos, words.length - 1);
+      idx = Math.min(j + 1, words.length - 1);
       words[idx].el.classList.add('on');
     }
   };
