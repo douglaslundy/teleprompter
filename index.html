@@ -124,7 +124,7 @@ const store = (k, v) => { try { return v === undefined ? localStorage.getItem(k)
 
 const LANGS = {
   pt: {
-    sync: 'Sincronizar', syncOk: 'Sincronizado', syncFail: 'Falha na sincronização', syncUrl: 'Endereço da API (ex.: https://api.seudominio.com)', syncEmail: 'E-mail', syncPass: 'Senha', syncNew: 'Conta não encontrada. Criar com esses dados?', newScript: '+ Novo roteiro', import: 'Importar', untitled: 'Sem título', myScript: 'Meu roteiro',
+    sync: 'Sincronizar', syncOk: 'Sincronizado', syncFail: 'Falha na sincronização', syncUrl: 'Endereço da API (ex.: https://api.seudominio.com)', syncEmail: 'E-mail', syncPass: 'Senha', syncNew: 'Conta não encontrada. Criar com esses dados?', quotaOut: 'Limite diário de vídeos do seu plano atingido. Volte amanhã.', quotaCut: 'Limite de tempo do plano atingido: gravação encerrada.', newScript: '+ Novo roteiro', import: 'Importar', untitled: 'Sem título', myScript: 'Meu roteiro',
     emptyList: 'Nenhum roteiro ainda. Toque em "Novo roteiro".', words: n => `${n} palavras`,
     titlePh: 'Título do roteiro', scriptPh: 'Cole ou escreva o roteiro aqui',
     mode: 'Modo', mSpeed: 'Velocidade', mTime: 'Tempo fixo', mWpm: 'Palavras por minuto', mSpeech: 'Acompanhar minha fala',
@@ -147,7 +147,7 @@ const LANGS = {
     recReady: 'Gravação pronta. Toque em Salvar.'
   },
   en: {
-    sync: 'Sync', syncOk: 'Synced', syncFail: 'Sync failed', syncUrl: 'API address (e.g. https://api.yourdomain.com)', syncEmail: 'Email', syncPass: 'Password', syncNew: 'Account not found. Create it with these details?', newScript: '+ New script', import: 'Import', untitled: 'Untitled', myScript: 'My script',
+    sync: 'Sync', syncOk: 'Synced', syncFail: 'Sync failed', syncUrl: 'API address (e.g. https://api.yourdomain.com)', syncEmail: 'Email', syncPass: 'Password', syncNew: 'Account not found. Create it with these details?', quotaOut: 'Daily video limit for your plan reached. Come back tomorrow.', quotaCut: 'Plan time limit reached: recording stopped.', newScript: '+ New script', import: 'Import', untitled: 'Untitled', myScript: 'My script',
     emptyList: 'No scripts yet. Tap "New script".', words: n => `${n} words`,
     titlePh: 'Script title', scriptPh: 'Paste or write your script here',
     mode: 'Mode', mSpeed: 'Speed', mTime: 'Fixed time', mWpm: 'Words per minute', mSpeech: 'Follow my speech',
@@ -170,7 +170,7 @@ const LANGS = {
     recReady: 'Recording ready. Tap Save.'
   },
   es: {
-    sync: 'Sincronizar', syncOk: 'Sincronizado', syncFail: 'Error de sincronización', syncUrl: 'Dirección de la API (ej.: https://api.tudominio.com)', syncEmail: 'Correo', syncPass: 'Contraseña', syncNew: 'Cuenta no encontrada. ¿Crearla con estos datos?', newScript: '+ Nuevo guion', import: 'Importar', untitled: 'Sin título', myScript: 'Mi guion',
+    sync: 'Sincronizar', syncOk: 'Sincronizado', syncFail: 'Error de sincronización', syncUrl: 'Dirección de la API (ej.: https://api.tudominio.com)', syncEmail: 'Correo', syncPass: 'Contraseña', syncNew: 'Cuenta no encontrada. ¿Crearla con estos datos?', quotaOut: 'Límite diario de videos de tu plan alcanzado. Vuelve mañana.', quotaCut: 'Límite de tiempo del plan alcanzado: grabación detenida.', newScript: '+ Nuevo guion', import: 'Importar', untitled: 'Sin título', myScript: 'Mi guion',
     emptyList: 'Aún no hay guiones. Toca "Nuevo guion".', words: n => `${n} palabras`,
     titlePh: 'Título del guion', scriptPh: 'Pega o escribe el guion aquí',
     mode: 'Modo', mSpeed: 'Velocidad', mTime: 'Tiempo fijo', mWpm: 'Palabras por minuto', mSpeech: 'Seguir mi voz',
@@ -244,8 +244,8 @@ const persist = () => store('tp.scripts', JSON.stringify(scripts));
 // sync opcional com a API (login nao e obrigatorio): last-write-wins por `at`, exclusoes em tp.deleted
 async function api(path, body) {
   const r = await fetch(store('tp.api').replace(/\/$/, '') + '/api' + path, {
-    method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json', ...(store('tp.token') ? { Authorization: 'Bearer ' + store('tp.token') } : {}) },
-    body: JSON.stringify(body || {}) });
+    method: body === null ? 'GET' : 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json', ...(store('tp.token') ? { Authorization: 'Bearer ' + store('tp.token') } : {}) },
+    body: body === null ? undefined : JSON.stringify(body || {}) });
   if (!r.ok) throw Object.assign(new Error(r.status), { status: r.status });
   return r.json();
 }
@@ -658,6 +658,11 @@ function countdown() {
 
 async function begin(record, keep) {
   if (!keep) buildText();
+  let q = null; // cota do plano: so vale com conta; sem conta ou sem rede, grava normalmente
+  if (record && store('tp.token')) {
+    try { q = await api('/quota', null); } catch {}
+    if (q && !q.can_record) { alert(tr('quotaOut')); $('try').style.display = $('rec').style.display = ''; return; }
+  }
   if (record) take = keep ? take + 1 : 1;
   $('try').style.display = $('rec').style.display = $('cont').style.display = 'none';
   await countdown();
@@ -666,7 +671,11 @@ async function begin(record, keep) {
     chunks = [];
     recorder = new MediaRecorder(stream, type ? { mimeType: type } : undefined);
     recorder.ondataavailable = e => e.data.size && chunks.push(e.data);
+    const t0 = Date.now(), maxS = q?.plan.max_video_seconds || 0;
+    const cap = maxS && setTimeout(() => { if (recorder.state !== 'inactive') { alert(tr('quotaCut')); recorder.stop(); stopScroll(); stopSpeech(); } }, maxS * 1000);
     recorder.onstop = () => {
+      clearTimeout(cap);
+      if (store('tp.token')) api('/usage/video', { seconds: Math.max(1, Math.round((Date.now() - t0) / 1000)) }).catch(() => {});
       const ext = recorder.mimeType.includes('mp4') ? 'mp4' : 'webm';
       file = new File(chunks, `teleprompter-${Date.now()}${take > 1 ? '-t' + take : ''}.${ext}`, { type: recorder.mimeType });
       dbDo('readwrite', st => st.put({ id: Date.now(), name: file.name, title: (cur?.title || '') + (take > 1 ? ' · ' + tr('takeN', take) : ''), at: Date.now(), size: file.size, type: file.type, blob: file }));
