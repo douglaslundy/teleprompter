@@ -49,7 +49,7 @@ button.main{background:#d22;border-color:#d22;font-weight:600;font-size:18px}
 <body>
 <div id="list">
   <div class="head"><button class="main" id="new" style="flex:1" data-i18n="newScript">+ Novo roteiro</button></div>
-  <div class="head"><button id="imp" data-i18n="import">Importar</button><button id="tplBtn" data-i18n="templates">Modelos</button><button id="recsBtn" data-i18n="recsTitle">Gravações</button><select id="uil"><option value="pt">PT</option><option value="en">EN</option><option value="es">ES</option></select></div>
+  <div class="head"><button id="imp" data-i18n="import">Importar</button><button id="tplBtn" data-i18n="templates">Modelos</button><button id="recsBtn" data-i18n="recsTitle">Gravações</button><button id="syncBtn" data-i18n="sync">Sincronizar</button><select id="uil"><option value="pt">PT</option><option value="en">EN</option><option value="es">ES</option></select></div>
   <input type="file" id="file" accept=".txt,.docx,.pdf,text/plain" hidden>
   <div id="items"></div>
 </div>
@@ -124,7 +124,7 @@ const store = (k, v) => { try { return v === undefined ? localStorage.getItem(k)
 
 const LANGS = {
   pt: {
-    newScript: '+ Novo roteiro', import: 'Importar', untitled: 'Sem título', myScript: 'Meu roteiro',
+    sync: 'Sincronizar', syncOk: 'Sincronizado', syncFail: 'Falha na sincronização', syncUrl: 'Endereço da API (ex.: https://api.seudominio.com)', syncEmail: 'E-mail', syncPass: 'Senha', syncNew: 'Conta não encontrada. Criar com esses dados?', newScript: '+ Novo roteiro', import: 'Importar', untitled: 'Sem título', myScript: 'Meu roteiro',
     emptyList: 'Nenhum roteiro ainda. Toque em "Novo roteiro".', words: n => `${n} palavras`,
     titlePh: 'Título do roteiro', scriptPh: 'Cole ou escreva o roteiro aqui',
     mode: 'Modo', mSpeed: 'Velocidade', mTime: 'Tempo fixo', mWpm: 'Palavras por minuto', mSpeech: 'Acompanhar minha fala',
@@ -147,7 +147,7 @@ const LANGS = {
     recReady: 'Gravação pronta. Toque em Salvar.'
   },
   en: {
-    newScript: '+ New script', import: 'Import', untitled: 'Untitled', myScript: 'My script',
+    sync: 'Sync', syncOk: 'Synced', syncFail: 'Sync failed', syncUrl: 'API address (e.g. https://api.yourdomain.com)', syncEmail: 'Email', syncPass: 'Password', syncNew: 'Account not found. Create it with these details?', newScript: '+ New script', import: 'Import', untitled: 'Untitled', myScript: 'My script',
     emptyList: 'No scripts yet. Tap "New script".', words: n => `${n} words`,
     titlePh: 'Script title', scriptPh: 'Paste or write your script here',
     mode: 'Mode', mSpeed: 'Speed', mTime: 'Fixed time', mWpm: 'Words per minute', mSpeech: 'Follow my speech',
@@ -170,7 +170,7 @@ const LANGS = {
     recReady: 'Recording ready. Tap Save.'
   },
   es: {
-    newScript: '+ Nuevo guion', import: 'Importar', untitled: 'Sin título', myScript: 'Mi guion',
+    sync: 'Sincronizar', syncOk: 'Sincronizado', syncFail: 'Error de sincronización', syncUrl: 'Dirección de la API (ej.: https://api.tudominio.com)', syncEmail: 'Correo', syncPass: 'Contraseña', syncNew: 'Cuenta no encontrada. ¿Crearla con estos datos?', newScript: '+ Nuevo guion', import: 'Importar', untitled: 'Sin título', myScript: 'Mi guion',
     emptyList: 'Aún no hay guiones. Toca "Nuevo guion".', words: n => `${n} palabras`,
     titlePh: 'Título del guion', scriptPh: 'Pega o escribe el guion aquí',
     mode: 'Modo', mSpeed: 'Velocidad', mTime: 'Tiempo fijo', mWpm: 'Palabras por minuto', mSpeech: 'Seguir mi voz',
@@ -241,6 +241,39 @@ let scripts = [], cur = null;
 try { scripts = JSON.parse(store('tp.scripts')) || []; } catch {}
 if (!scripts.length && store('tp.script')) scripts.push({ id: Date.now(), title: tr('myScript'), text: store('tp.script'), at: Date.now() });
 const persist = () => store('tp.scripts', JSON.stringify(scripts));
+// sync opcional com a API (login nao e obrigatorio): last-write-wins por `at`, exclusoes em tp.deleted
+async function api(path, body) {
+  const r = await fetch(store('tp.api').replace(/\/$/, '') + '/api' + path, {
+    method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json', ...(store('tp.token') ? { Authorization: 'Bearer ' + store('tp.token') } : {}) },
+    body: JSON.stringify(body || {}) });
+  if (!r.ok) throw Object.assign(new Error(r.status), { status: r.status });
+  return r.json();
+}
+async function login() {
+  const url = prompt(tr('syncUrl'), store('tp.api') || ''); if (!url) return false;
+  const email = prompt(tr('syncEmail')); const password = email && prompt(tr('syncPass')); if (!password) return false;
+  store('tp.api', url); store('tp.token', '');
+  try { store('tp.token', (await api('/login', { email, password })).token); }
+  catch (e) {
+    if (e.status !== 422 || !confirm(tr('syncNew'))) throw e;
+    store('tp.token', (await api('/register', { name: email.split('@')[0], email, password })).token);
+  }
+  return true;
+}
+async function syncNow() {
+  try {
+    if (!store('tp.token') && !(await login())) return;
+    let del = []; try { del = JSON.parse(store('tp.deleted')) || []; } catch {}
+    let res;
+    try { res = await api('/scripts/sync', { scripts: scripts.map(({ id, title, text, at }) => ({ id, title, text, at })), deleted: del }); }
+    catch (e) { if (e.status !== 401) throw e; store('tp.token', ''); return syncNow(); }
+    const dead = new Set(res.deleted);
+    scripts = scripts.filter(s => !dead.has(s.id));
+    for (const s of res.scripts) { const l = scripts.find(x => x.id === s.id); if (!l) scripts.push(s); else if (s.at > l.at) Object.assign(l, s); }
+    store('tp.deleted', '[]'); persist(); showList(); alert(tr('syncOk'));
+  } catch { alert(tr('syncFail')); }
+}
+$('syncBtn').onclick = syncNow;
 const wordCount = t => (t.trim().match(/\S+/g) || []).filter(w => w !== '//').length;
 
 function showList() {
@@ -380,7 +413,7 @@ $('file').onchange = () => { const f = $('file').files[0]; $('file').value = '';
 
 $('toList').onclick = () => { saveCur(); showList(); };
 $('script').oninput = $('title').oninput = () => { saveCur(); refreshSetup(); };
-$('del').onclick = () => { if (confirm(tr('delConfirm'))) { scripts = scripts.filter(s => s !== cur); persist(); showList(); } };
+$('del').onclick = () => { if (confirm(tr('delConfirm'))) { try { store('tp.deleted', JSON.stringify([...(JSON.parse(store('tp.deleted')) || []), cur.id])); } catch {} scripts = scripts.filter(s => s !== cur); persist(); showList(); } };
 
 $('fs').value = store('tp.fs') || 36;
 $('sp').value = store('tp.sp') || 60;
