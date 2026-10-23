@@ -63,6 +63,7 @@ button.main{background:#d22;border-color:#d22;font-weight:600;font-size:18px}
   <div class="head">
     <button id="toList">‹</button>
     <input id="title" placeholder="Título do roteiro" data-i18n-ph="titlePh">
+    <button id="ai" data-i18n="aiBtn">✨ IA</button>
     <button id="del">🗑</button>
   </div>
   <textarea id="script" placeholder="Cole ou escreva o roteiro aqui" data-i18n-ph="scriptPh"></textarea>
@@ -124,7 +125,7 @@ const store = (k, v) => { try { return v === undefined ? localStorage.getItem(k)
 
 const LANGS = {
   pt: {
-    sync: 'Sincronizar', syncOk: 'Sincronizado', syncFail: 'Falha na sincronização', syncUrl: 'Endereço da API (ex.: https://api.seudominio.com)', syncEmail: 'E-mail', syncPass: 'Senha', syncNew: 'Conta não encontrada. Criar com esses dados?', quotaOut: 'Limite diário de vídeos do seu plano atingido. Volte amanhã.', quotaCut: 'Limite de tempo do plano atingido: gravação encerrada.', newScript: '+ Novo roteiro', import: 'Importar', untitled: 'Sem título', myScript: 'Meu roteiro',
+    sync: 'Sincronizar', syncOk: 'Sincronizado', syncFail: 'Falha na sincronização', syncUrl: 'Endereço da API (ex.: https://api.seudominio.com)', syncEmail: 'E-mail', syncPass: 'Senha', syncNew: 'Conta não encontrada. Criar com esses dados?', quotaOut: 'Limite diário de vídeos do seu plano atingido. Volte amanhã.', quotaCut: 'Limite de tempo do plano atingido: gravação encerrada.', aiBtn: '✨ IA', aiTopic: 'Tema do roteiro (ou deixe o texto no editor para a IA ajustar ao tempo):', aiMin: 'Duração em minutos:', aiBusy: 'Gerando…', aiFail: 'Não foi possível gerar o roteiro.', aiOut: 'Créditos de IA do mês esgotados.', aiLeft: n => `Roteiro gerado. Créditos de IA restantes: ${n}`, newScript: '+ Novo roteiro', import: 'Importar', untitled: 'Sem título', myScript: 'Meu roteiro',
     emptyList: 'Nenhum roteiro ainda. Toque em "Novo roteiro".', words: n => `${n} palavras`,
     titlePh: 'Título do roteiro', scriptPh: 'Cole ou escreva o roteiro aqui',
     mode: 'Modo', mSpeed: 'Velocidade', mTime: 'Tempo fixo', mWpm: 'Palavras por minuto', mSpeech: 'Acompanhar minha fala',
@@ -147,7 +148,7 @@ const LANGS = {
     recReady: 'Gravação pronta. Toque em Salvar.'
   },
   en: {
-    sync: 'Sync', syncOk: 'Synced', syncFail: 'Sync failed', syncUrl: 'API address (e.g. https://api.yourdomain.com)', syncEmail: 'Email', syncPass: 'Password', syncNew: 'Account not found. Create it with these details?', quotaOut: 'Daily video limit for your plan reached. Come back tomorrow.', quotaCut: 'Plan time limit reached: recording stopped.', newScript: '+ New script', import: 'Import', untitled: 'Untitled', myScript: 'My script',
+    sync: 'Sync', syncOk: 'Synced', syncFail: 'Sync failed', syncUrl: 'API address (e.g. https://api.yourdomain.com)', syncEmail: 'Email', syncPass: 'Password', syncNew: 'Account not found. Create it with these details?', quotaOut: 'Daily video limit for your plan reached. Come back tomorrow.', quotaCut: 'Plan time limit reached: recording stopped.', aiBtn: '✨ AI', aiTopic: 'Script topic (or leave text in the editor for the AI to fit to the time):', aiMin: 'Duration in minutes:', aiBusy: 'Generating…', aiFail: 'Could not generate the script.', aiOut: 'Monthly AI credits used up.', aiLeft: n => `Script generated. AI credits left: ${n}`, newScript: '+ New script', import: 'Import', untitled: 'Untitled', myScript: 'My script',
     emptyList: 'No scripts yet. Tap "New script".', words: n => `${n} words`,
     titlePh: 'Script title', scriptPh: 'Paste or write your script here',
     mode: 'Mode', mSpeed: 'Speed', mTime: 'Fixed time', mWpm: 'Words per minute', mSpeech: 'Follow my speech',
@@ -170,7 +171,7 @@ const LANGS = {
     recReady: 'Recording ready. Tap Save.'
   },
   es: {
-    sync: 'Sincronizar', syncOk: 'Sincronizado', syncFail: 'Error de sincronización', syncUrl: 'Dirección de la API (ej.: https://api.tudominio.com)', syncEmail: 'Correo', syncPass: 'Contraseña', syncNew: 'Cuenta no encontrada. ¿Crearla con estos datos?', quotaOut: 'Límite diario de videos de tu plan alcanzado. Vuelve mañana.', quotaCut: 'Límite de tiempo del plan alcanzado: grabación detenida.', newScript: '+ Nuevo guion', import: 'Importar', untitled: 'Sin título', myScript: 'Mi guion',
+    sync: 'Sincronizar', syncOk: 'Sincronizado', syncFail: 'Error de sincronización', syncUrl: 'Dirección de la API (ej.: https://api.tudominio.com)', syncEmail: 'Correo', syncPass: 'Contraseña', syncNew: 'Cuenta no encontrada. ¿Crearla con estos datos?', quotaOut: 'Límite diario de videos de tu plan alcanzado. Vuelve mañana.', quotaCut: 'Límite de tiempo del plan alcanzado: grabación detenida.', aiBtn: '✨ IA', aiTopic: 'Tema del guion (o deja el texto en el editor para que la IA lo ajuste al tiempo):', aiMin: 'Duración en minutos:', aiBusy: 'Generando…', aiFail: 'No se pudo generar el guion.', aiOut: 'Créditos de IA del mes agotados.', aiLeft: n => `Guion generado. Créditos de IA restantes: ${n}`, newScript: '+ Nuevo guion', import: 'Importar', untitled: 'Sin título', myScript: 'Mi guion',
     emptyList: 'Aún no hay guiones. Toca "Nuevo guion".', words: n => `${n} palabras`,
     titlePh: 'Título del guion', scriptPh: 'Pega o escribe el guion aquí',
     mode: 'Modo', mSpeed: 'Velocidad', mTime: 'Tiempo fijo', mWpm: 'Palabras por minuto', mSpeech: 'Seguir mi voz',
@@ -274,6 +275,23 @@ async function syncNow() {
   } catch { alert(tr('syncFail')); }
 }
 $('syncBtn').onclick = syncNow;
+// roteiro por IA (so texto): exige conta; usa o texto do editor como rascunho se houver
+$('ai').onclick = async () => {
+  const draft = $('script').value.trim();
+  const topic = draft ? '' : prompt(tr('aiTopic')); if (!draft && !topic) return;
+  const minutes = parseFloat(prompt(tr('aiMin'), '2')?.replace(',', '.')); if (!(minutes > 0)) return;
+  try {
+    if (!store('tp.token') && !(await login())) return;
+    const b = $('ai'), old = b.textContent; b.textContent = tr('aiBusy'); b.disabled = true;
+    try {
+      const r = await api('/ai/script', { minutes, lang, ...(draft ? { draft } : { topic }) });
+      $('script').value = r.text; $('script').oninput(); alert(tr('aiLeft', r.ai_left));
+    } finally { b.textContent = old; b.disabled = false; }
+  } catch (e) {
+    if (e.status === 401) store('tp.token', '');
+    alert(tr(e.status === 429 ? 'aiOut' : 'aiFail'));
+  }
+};
 const wordCount = t => (t.trim().match(/\S+/g) || []).filter(w => w !== '//').length;
 
 function showList() {
