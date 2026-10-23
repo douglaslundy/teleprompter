@@ -32,6 +32,13 @@ input[type=color]{min-width:56px;min-height:40px}
 #toList,#recsBack{min-width:44px}
 select,button{min-height:44px;font:inherit;color:#fff;background:#222;border:1px solid #444;border-radius:12px;padding:12px 16px}
 input,select,textarea{font-size:16px} /* menos de 16px faz o iOS dar zoom ao focar */
+dialog{background:#1c1c20;color:#fff;border:1px solid #444;border-radius:16px;padding:20px;width:min(92vw,420px);max-height:90dvh;overflow:auto;font:inherit}
+dialog::backdrop{background:rgba(0,0,0,.65)}
+dialog p{margin:0 0 16px;line-height:1.4;white-space:pre-line;overflow-wrap:anywhere}
+dialog input{width:100%;margin-bottom:16px;background:#111;color:#fff;border:1px solid #444;border-radius:12px;padding:12px}
+dialog .acts{display:flex;gap:10px;justify-content:flex-end;margin:0}
+dialog .acts button{flex:0 1 auto;min-width:96px}
+dialog button.danger{background:#d22;border-color:#d22;font-weight:600}
 button.main{background:#d22;border-color:#d22;font-weight:600;font-size:18px}
 #run{touch-action:none;display:none;position:fixed;inset:0;background:#000}
 #cam{position:absolute;left:0;top:0;width:100%;height:100%;object-fit:fill;background:#000}
@@ -117,6 +124,7 @@ button.main{background:#d22;border-color:#d22;font-weight:600;font-size:18px}
   <div id="bar">
     <button id="back">✕</button>
     <button id="flip">⟲</button>
+    <button id="rcBtn" title="Controle remoto">📱</button>
     <button id="fsm">A−</button><button id="fsp">A+</button>
     <button id="spm">−</button><button id="spp">+</button>
     <button id="pause">⏸</button>
@@ -132,7 +140,12 @@ const store = (k, v) => { try { return v === undefined ? localStorage.getItem(k)
 
 const LANGS = {
   pt: {
-    sync: 'Sincronizar', syncOk: 'Sincronizado', syncFail: 'Falha na sincronização', syncUrl: 'Endereço da API (ex.: https://api.seudominio.com)', syncEmail: 'E-mail', syncPass: 'Senha', syncNew: 'Conta não encontrada. Criar com esses dados?', quotaOut: 'Limite diário de vídeos do seu plano atingido. Volte amanhã.', quotaCut: 'Limite de tempo do plano atingido: gravação encerrada.', aiBtn: '✨ IA', aiTopic: 'Tema do roteiro (ou deixe o texto no editor para a IA ajustar ao tempo):', aiMin: 'Duração em minutos:', aiBusy: 'Gerando…', aiFail: 'Não foi possível gerar o roteiro.', aiOut: 'Créditos de IA do mês esgotados.', aiLeft: n => `Roteiro gerado. Créditos de IA restantes: ${n}`, pos: 'Posição do texto', posMid: 'Meio da tela', posTop: 'Topo (perto da câmera)', paged: 'Rolagem por página', newScript: '+ Novo roteiro', import: 'Importar', untitled: 'Sem título', myScript: 'Meu roteiro',
+    sync: 'Sincronizar', syncOk: 'Sincronizado', syncFail: 'Falha na sincronização', syncUrl: 'Endereço da API (ex.: https://api.seudominio.com)', syncEmail: 'E-mail', syncPass: 'Senha', syncNew: 'Conta não encontrada. Criar com esses dados?', quotaOut: 'Limite diário de vídeos do seu plano atingido. Volte amanhã.', quotaCut: 'Limite de tempo do plano atingido: gravação encerrada.', aiBtn: '✨ IA', aiTopic: 'Tema do roteiro (ou deixe o texto no editor para a IA ajustar ao tempo):', aiMin: 'Duração em minutos:', aiBusy: 'Gerando…', aiFail: 'Não foi possível gerar o roteiro.', aiOut: 'Créditos de IA do mês esgotados.', aiLeft: n => `Roteiro gerado. Créditos de IA restantes: ${n}`, pos: 'Posição do texto', posMid: 'Meio da tela', posTop: 'Topo (perto da câmera)', paged: 'Rolagem por página', rcMsg: (u, c) => `Controle remoto ligado.
+
+No outro celular ou PC abra:
+${u}/remote.html
+
+Código: ${c}`, rcOff: 'Controle remoto desligado.', rcFail: 'Não foi possível ligar o controle remoto (API fora do ar?).', rcUrl: 'Endereço da API (ex.: https://api.seudominio.com)', ok: 'OK', cancel: 'Cancelar', delete: 'Excluir', newScript: '+ Novo roteiro', import: 'Importar', untitled: 'Sem título', myScript: 'Meu roteiro',
     emptyList: 'Nenhum roteiro ainda. Toque em "Novo roteiro".', words: n => `${n} palavras`,
     titlePh: 'Título do roteiro', scriptPh: 'Cole ou escreva o roteiro aqui',
     mode: 'Modo', mSpeed: 'Velocidade', mTime: 'Tempo fixo', mWpm: 'Palavras por minuto', mSpeech: 'Acompanhar minha fala',
@@ -155,7 +168,12 @@ const LANGS = {
     recReady: 'Gravação pronta. Toque em Salvar.'
   },
   en: {
-    sync: 'Sync', syncOk: 'Synced', syncFail: 'Sync failed', syncUrl: 'API address (e.g. https://api.yourdomain.com)', syncEmail: 'Email', syncPass: 'Password', syncNew: 'Account not found. Create it with these details?', quotaOut: 'Daily video limit for your plan reached. Come back tomorrow.', quotaCut: 'Plan time limit reached: recording stopped.', aiBtn: '✨ AI', aiTopic: 'Script topic (or leave text in the editor for the AI to fit to the time):', aiMin: 'Duration in minutes:', aiBusy: 'Generating…', aiFail: 'Could not generate the script.', aiOut: 'Monthly AI credits used up.', aiLeft: n => `Script generated. AI credits left: ${n}`, pos: 'Text position', posMid: 'Middle of the screen', posTop: 'Top (near the camera)', paged: 'Page-by-page scroll', newScript: '+ New script', import: 'Import', untitled: 'Untitled', myScript: 'My script',
+    sync: 'Sync', syncOk: 'Synced', syncFail: 'Sync failed', syncUrl: 'API address (e.g. https://api.yourdomain.com)', syncEmail: 'Email', syncPass: 'Password', syncNew: 'Account not found. Create it with these details?', quotaOut: 'Daily video limit for your plan reached. Come back tomorrow.', quotaCut: 'Plan time limit reached: recording stopped.', aiBtn: '✨ AI', aiTopic: 'Script topic (or leave text in the editor for the AI to fit to the time):', aiMin: 'Duration in minutes:', aiBusy: 'Generating…', aiFail: 'Could not generate the script.', aiOut: 'Monthly AI credits used up.', aiLeft: n => `Script generated. AI credits left: ${n}`, pos: 'Text position', posMid: 'Middle of the screen', posTop: 'Top (near the camera)', paged: 'Page-by-page scroll', rcMsg: (u, c) => `Remote control on.
+
+On the other phone or PC open:
+${u}/remote.html
+
+Code: ${c}`, rcOff: 'Remote control off.', rcFail: 'Could not start the remote control (API down?).', rcUrl: 'API address (e.g. https://api.yourdomain.com)', ok: 'OK', cancel: 'Cancel', delete: 'Delete', newScript: '+ New script', import: 'Import', untitled: 'Untitled', myScript: 'My script',
     emptyList: 'No scripts yet. Tap "New script".', words: n => `${n} words`,
     titlePh: 'Script title', scriptPh: 'Paste or write your script here',
     mode: 'Mode', mSpeed: 'Speed', mTime: 'Fixed time', mWpm: 'Words per minute', mSpeech: 'Follow my speech',
@@ -178,7 +196,12 @@ const LANGS = {
     recReady: 'Recording ready. Tap Save.'
   },
   es: {
-    sync: 'Sincronizar', syncOk: 'Sincronizado', syncFail: 'Error de sincronización', syncUrl: 'Dirección de la API (ej.: https://api.tudominio.com)', syncEmail: 'Correo', syncPass: 'Contraseña', syncNew: 'Cuenta no encontrada. ¿Crearla con estos datos?', quotaOut: 'Límite diario de videos de tu plan alcanzado. Vuelve mañana.', quotaCut: 'Límite de tiempo del plan alcanzado: grabación detenida.', aiBtn: '✨ IA', aiTopic: 'Tema del guion (o deja el texto en el editor para que la IA lo ajuste al tiempo):', aiMin: 'Duración en minutos:', aiBusy: 'Generando…', aiFail: 'No se pudo generar el guion.', aiOut: 'Créditos de IA del mes agotados.', aiLeft: n => `Guion generado. Créditos de IA restantes: ${n}`, pos: 'Posición del texto', posMid: 'Centro de la pantalla', posTop: 'Arriba (cerca de la cámara)', paged: 'Desplazamiento por página', newScript: '+ Nuevo guion', import: 'Importar', untitled: 'Sin título', myScript: 'Mi guion',
+    sync: 'Sincronizar', syncOk: 'Sincronizado', syncFail: 'Error de sincronización', syncUrl: 'Dirección de la API (ej.: https://api.tudominio.com)', syncEmail: 'Correo', syncPass: 'Contraseña', syncNew: 'Cuenta no encontrada. ¿Crearla con estos datos?', quotaOut: 'Límite diario de videos de tu plan alcanzado. Vuelve mañana.', quotaCut: 'Límite de tiempo del plan alcanzado: grabación detenida.', aiBtn: '✨ IA', aiTopic: 'Tema del guion (o deja el texto en el editor para que la IA lo ajuste al tiempo):', aiMin: 'Duración en minutos:', aiBusy: 'Generando…', aiFail: 'No se pudo generar el guion.', aiOut: 'Créditos de IA del mes agotados.', aiLeft: n => `Guion generado. Créditos de IA restantes: ${n}`, pos: 'Posición del texto', posMid: 'Centro de la pantalla', posTop: 'Arriba (cerca de la cámara)', paged: 'Desplazamiento por página', rcMsg: (u, c) => `Control remoto activado.
+
+En el otro móvil o PC abre:
+${u}/remote.html
+
+Código: ${c}`, rcOff: 'Control remoto desactivado.', rcFail: 'No se pudo activar el control remoto (¿API caída?).', rcUrl: 'Dirección de la API (ej.: https://api.tudominio.com)', ok: 'OK', cancel: 'Cancelar', delete: 'Eliminar', newScript: '+ Nuevo guion', import: 'Importar', untitled: 'Sin título', myScript: 'Mi guion',
     emptyList: 'Aún no hay guiones. Toca "Nuevo guion".', words: n => `${n} palabras`,
     titlePh: 'Título del guion', scriptPh: 'Pega o escribe el guion aquí',
     mode: 'Modo', mSpeed: 'Velocidad', mTime: 'Tiempo fijo', mWpm: 'Palabras por minuto', mSpeech: 'Seguir mi voz',
@@ -245,6 +268,26 @@ function applyLang() {
   $('slang').value = store('tp.slang') || LOCALE[lang];
 }
 
+// Janelas proprias (modal) no lugar de alert/confirm/prompt do navegador. Cada uma devolve uma Promise.
+function uiDialog(msg, { input, def = '', ok = tr('ok'), cancel = true, danger = false } = {}) {
+  return new Promise(res => {
+    const d = document.createElement('dialog'), p = document.createElement('p'), acts = document.createElement('div');
+    p.textContent = msg; acts.className = 'acts'; d.append(p);
+    let inp = null;
+    if (input) { inp = document.createElement('input'); inp.type = input; inp.value = def; inp.autocomplete = 'off'; d.append(inp); }
+    const done = v => { d.close(); d.remove(); res(v); };
+    if (cancel) { const c = document.createElement('button'); c.textContent = tr('cancel'); c.onclick = () => done(inp ? null : false); acts.append(c); }
+    const o = document.createElement('button'); o.textContent = ok; if (danger) o.className = 'danger'; else o.className = 'main';
+    o.onclick = () => done(inp ? inp.value : true); acts.append(o); d.append(acts);
+    d.addEventListener('cancel', e => { e.preventDefault(); done(inp ? null : false); }); // Esc
+    if (inp) inp.onkeydown = e => { if (e.key === 'Enter') o.click(); };
+    document.body.append(d); d.showModal(); (inp || o).focus();
+  });
+}
+const uiAlert = msg => uiDialog(msg, { cancel: false });
+const uiConfirm = (msg, danger) => uiDialog(msg, { danger, ok: danger ? tr('delete') : tr('ok') });
+const uiPrompt = (msg, def, input = 'text') => uiDialog(msg, { input, def });
+
 let scripts = [], cur = null;
 try { scripts = JSON.parse(store('tp.scripts')) || []; } catch {}
 if (!scripts.length && store('tp.script')) scripts.push({ id: Date.now(), title: tr('myScript'), text: store('tp.script'), at: Date.now() });
@@ -258,12 +301,12 @@ async function api(path, body) {
   return r.json();
 }
 async function login() {
-  const url = prompt(tr('syncUrl'), store('tp.api') || ''); if (!url) return false;
-  const email = prompt(tr('syncEmail')); const password = email && prompt(tr('syncPass')); if (!password) return false;
+  const url = await uiPrompt(tr('syncUrl'), store('tp.api') || '', 'url'); if (!url) return false;
+  const email = await uiPrompt(tr('syncEmail'), '', 'email'); const password = email && await uiPrompt(tr('syncPass'), '', 'password'); if (!password) return false;
   store('tp.api', url); store('tp.token', '');
   try { store('tp.token', (await api('/login', { email, password })).token); }
   catch (e) {
-    if (e.status !== 422 || !confirm(tr('syncNew'))) throw e;
+    if (e.status !== 422 || !(await uiConfirm(tr('syncNew')))) throw e;
     store('tp.token', (await api('/register', { name: email.split('@')[0], email, password })).token);
   }
   return true;
@@ -278,25 +321,25 @@ async function syncNow() {
     const dead = new Set(res.deleted);
     scripts = scripts.filter(s => !dead.has(s.id));
     for (const s of res.scripts) { const l = scripts.find(x => x.id === s.id); if (!l) scripts.push(s); else if (s.at > l.at) Object.assign(l, s); }
-    store('tp.deleted', '[]'); persist(); showList(); alert(tr('syncOk'));
-  } catch { alert(tr('syncFail')); }
+    store('tp.deleted', '[]'); persist(); showList(); uiAlert(tr('syncOk'));
+  } catch { uiAlert(tr('syncFail')); }
 }
 $('syncBtn').onclick = syncNow;
 // roteiro por IA (so texto): exige conta; usa o texto do editor como rascunho se houver
 $('ai').onclick = async () => {
   const draft = $('script').value.trim();
-  const topic = draft ? '' : prompt(tr('aiTopic')); if (!draft && !topic) return;
-  const minutes = parseFloat(prompt(tr('aiMin'), '2')?.replace(',', '.')); if (!(minutes > 0)) return;
+  const topic = draft ? '' : await uiPrompt(tr('aiTopic')); if (!draft && !topic) return;
+  const minutes = parseFloat((await uiPrompt(tr('aiMin'), '2'))?.replace(',', '.')); if (!(minutes > 0)) return;
   try {
     if (!store('tp.token') && !(await login())) return;
     const b = $('ai'), old = b.textContent; b.textContent = tr('aiBusy'); b.disabled = true;
     try {
       const r = await api('/ai/script', { minutes, lang, ...(draft ? { draft } : { topic }) });
-      $('script').value = r.text; $('script').oninput(); alert(tr('aiLeft', r.ai_left));
+      $('script').value = r.text; $('script').oninput(); uiAlert(tr('aiLeft', r.ai_left));
     } finally { b.textContent = old; b.disabled = false; }
   } catch (e) {
     if (e.status === 401) store('tp.token', '');
-    alert(tr(e.status === 429 ? 'aiOut' : 'aiFail'));
+    uiAlert(tr(e.status === 429 ? 'aiOut' : 'aiFail'));
   }
 };
 const wordCount = t => (t.trim().match(/\S+/g) || []).filter(w => w !== '//').length;
@@ -434,14 +477,14 @@ async function importFile(f) {
     if (!text) throw new Error(tr('noText'));
     const s = { id: Date.now(), title: f.name.replace(/\.[^.]+$/, ''), text, at: Date.now() };
     scripts.push(s); persist(); editScript(s.id);
-  } catch (e) { alert(tr('importFail', e.message)); }
+  } catch (e) { uiAlert(tr('importFail', e.message)); }
 }
 $('imp').onclick = () => $('file').click();
 $('file').onchange = () => { const f = $('file').files[0]; $('file').value = ''; if (f) importFile(f); };
 
 $('toList').onclick = () => { saveCur(); showList(); };
 $('script').oninput = $('title').oninput = () => { saveCur(); refreshSetup(); };
-$('del').onclick = () => { if (confirm(tr('delConfirm'))) { try { store('tp.deleted', JSON.stringify([...(JSON.parse(store('tp.deleted')) || []), cur.id])); } catch {} scripts = scripts.filter(s => s !== cur); persist(); showList(); } };
+$('del').onclick = async () => { if (await uiConfirm(tr('delConfirm'), true)) { try { store('tp.deleted', JSON.stringify([...(JSON.parse(store('tp.deleted')) || []), cur.id])); } catch {} scripts = scripts.filter(s => s !== cur); persist(); showList(); } };
 
 $('fs').value = store('tp.fs') || 36;
 $('sp').value = store('tp.sp') || 60;
@@ -583,6 +626,37 @@ function shownY() {
   return Math.floor(y / P) * P;
 }
 
+// Controle remoto: sala no servidor, comandos buscados a cada 500 ms (ver RemoteController na API)
+let rcCode = '', rcSeq = 0, rcTimer = 0, rcBusy = false;
+const rcMove = d => {
+  y = Math.max(0, Math.min(y + d, maxY()));
+  while (idx > 0 && words[idx].el.offsetTop - padTop > y) setIdx(idx - 1);
+  while (idx < words.length - 1 && words[idx].el.offsetTop - padTop < y) setIdx(idx + 1);
+  $('txt').style.transform = `translateY(${-shownY()}px)`; lastHeard = performance.now();
+};
+const RC = {
+  toggle: () => $('pause').onclick(), play: () => !running && $('pause').onclick(), pause: () => running && $('pause').onclick(),
+  faster: () => adj(1), slower: () => adj(-1), fontup: () => setFs(+$('fs').value + 4), fontdown: () => setFs(+$('fs').value - 4),
+  back: () => rcMove(-$('ov').clientHeight * 0.5), fwd: () => rcMove($('ov').clientHeight * 0.5), top: () => { rcMove(-1e9); },
+};
+async function rcTick() {
+  if (rcBusy || !rcCode) return; rcBusy = true;
+  try {
+    const max = maxY(), r = await api(`/remote/${rcCode}/sync`, { after: rcSeq, state: { running, speed, fs: +$('fs').value, pct: max > 0 ? Math.min(100, Math.max(0, y / max * 100)) : 0 } });
+    rcSeq = r.seq; r.cmds.forEach(c => RC[c.cmd]?.());
+  } catch (e) { if (e.status === 404) rcStop(); } finally { rcBusy = false; }
+}
+function rcStop(say_) { clearInterval(rcTimer); rcTimer = 0; rcCode = ''; $('rcBtn').style.background = ''; if (say_) say(tr('rcOff')); }
+$('rcBtn').onclick = async () => {
+  if (rcCode) return rcStop(true);
+  if (!store('tp.api')) { const u = await uiPrompt(tr('rcUrl'), '', 'url'); if (!u) return; store('tp.api', u); }
+  try {
+    rcCode = (await api('/remote', {})).code; rcSeq = 0;
+    rcTimer = setInterval(rcTick, 500); $('rcBtn').style.background = '#2a7';
+    uiAlert(tr('rcMsg', store('tp.api').replace(/\/$/, ''), rcCode));
+  } catch { rcCode = ''; uiAlert(tr('rcFail')); }
+};
+
 function frame(t) {
   if (!running) return;
   const dt = Math.min(0.1, (t - last) / 1000);
@@ -690,7 +764,7 @@ async function startStream() {
   try {
     stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: f }, width: { ideal: w }, height: { ideal: h }, aspectRatio: { ideal: aw / ah } }, audio: { noiseSuppression: $('cnoise').checked, echoCancellation: $('cecho').checked, autoGainControl: true, ...($('cmic').value && { deviceId: { exact: $('cmic').value } }) } });
     listMics();
-  } catch (e) { alert(tr('camDenied', e.message)); return false; }
+  } catch (e) { uiAlert(tr('camDenied', e.message)); return false; }
   const v = $('cam');
   v.style.transform = f === 'user' ? 'scaleX(-1)' : 'none';
   v.onloadedmetadata = () => { fitCam(); say(tr('camSize', v.videoWidth, v.videoHeight, Math.min(v.videoWidth, v.videoHeight) < sh)); };
@@ -720,7 +794,7 @@ async function openCam() {
 }
 
 function closeCam() {
-  stopScroll(); stopSpeech();
+  rcStop(); stopScroll(); stopSpeech();
   if (recorder && recorder.state !== 'inactive') recorder.stop();
   stream?.getTracks().forEach(t => t.stop()); stream = null;
   $('run').style.display = 'none'; $('setup').style.display = 'flex'; $('cont').style.display = 'none';
@@ -738,7 +812,7 @@ async function begin(record, keep) {
   let q = null; // cota do plano: so vale com conta; sem conta ou sem rede, grava normalmente
   if (record && store('tp.token')) {
     try { q = await api('/quota', null); } catch {}
-    if (q && !q.can_record) { alert(tr('quotaOut')); $('try').style.display = $('rec').style.display = ''; return; }
+    if (q && !q.can_record) { uiAlert(tr('quotaOut')); $('try').style.display = $('rec').style.display = ''; return; }
   }
   if (record) take = keep ? take + 1 : 1;
   $('try').style.display = $('rec').style.display = $('cont').style.display = 'none';
@@ -749,7 +823,7 @@ async function begin(record, keep) {
     recorder = new MediaRecorder(stream, type ? { mimeType: type } : undefined);
     recorder.ondataavailable = e => e.data.size && chunks.push(e.data);
     const t0 = Date.now(), maxS = q?.plan.max_video_seconds || 0;
-    const cap = maxS && setTimeout(() => { if (recorder.state !== 'inactive') { alert(tr('quotaCut')); recorder.stop(); stopScroll(); stopSpeech(); } }, maxS * 1000);
+    const cap = maxS && setTimeout(() => { if (recorder.state !== 'inactive') { uiAlert(tr('quotaCut')); recorder.stop(); stopScroll(); stopSpeech(); } }, maxS * 1000);
     capT = []; capT0 = t0; yi = 0; // novo trecho comeca onde a leitura esta, nao na palavra 0
     while (yi < words.length - 1 && words[yi + 1].el.offsetTop - padTop <= y) yi++;
     capFrom = $('mode').value === 'speech' ? idx : words.findIndex(w => w.el.offsetTop === words[yi].el.offsetTop); // inclui a linha inteira
@@ -804,7 +878,7 @@ async function showRecs() {
     const bs = document.createElement('button'); bs.textContent = tr('share');
     bs.onclick = () => save(new File([r.blob], r.name, { type: r.type }));
     const bd = document.createElement('button'); bd.textContent = tr('del');
-    bd.onclick = async () => { if (confirm(tr('delRec'))) { await dbDo('readwrite', st => st.delete(r.id)); showRecs(); } };
+    bd.onclick = async () => { if (await uiConfirm(tr('delRec'), true)) { await dbDo('readwrite', st => st.delete(r.id)); showRecs(); } };
     const bt = document.createElement('button'); bt.textContent = 'SRT'; bt.hidden = !r.srt;
     bt.onclick = () => save(new File([r.srt], r.name.replace(/\.[^.]+$/, '') + '.srt', { type: 'application/x-subrip' }));
     acts.append(bp, bs, bt, bd); it.append(ti, m, acts); box.append(it);
