@@ -18,6 +18,7 @@ html,body{margin:0;height:100%;background:#000;color:#fff;font-family:system-ui,
 #items{flex:1;min-height:0;overflow:auto;display:flex;flex-direction:column;gap:8px}
 .item{text-align:left;background:#111;border:1px solid #333;border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:4px}
 .item b{font-size:17px}.item small{color:#999}
+#est{color:#999;font-size:14px;text-align:center}
 #empty{color:#999;text-align:center;margin-top:30px}
 .head{display:flex;gap:8px}
 #title{flex:1;min-width:0;background:#111;color:#fff;border:1px solid #333;border-radius:12px;padding:10px 12px;font-size:17px;font-weight:600}
@@ -55,10 +56,13 @@ button.main{background:#d22;border-color:#d22;font-weight:600;font-size:18px}
   </div>
   <textarea id="script" placeholder="Cole ou escreva o roteiro aqui"></textarea>
   <label>Modo
-    <select id="mode"><option value="speed">Velocidade</option><option value="speech">Acompanhar minha fala</option></select>
+    <select id="mode"><option value="speed">Velocidade</option><option value="time">Tempo fixo</option><option value="wpm">Palavras por minuto</option><option value="speech">Acompanhar minha fala</option></select>
   </label>
   <label>Letra <input id="fs" type="range" min="20" max="80" value="36"></label>
-  <label>Velocidade <input id="sp" type="range" min="10" max="200" value="60"></label>
+  <label id="rowSp">Velocidade <input id="sp" type="range" min="10" max="200" value="60"></label>
+  <label id="rowDur">Duração (mm:ss) <input id="dur" value="2:00" inputmode="numeric" size="6"></label>
+  <label id="rowWpm">Palavras/min <input id="wpm" type="number" min="40" max="400" value="140"></label>
+  <div id="est"></div>
   <button class="main" id="open">Abrir câmera</button>
 </div>
 
@@ -103,6 +107,7 @@ function editScript(id) {
   cur = scripts.find(s => s.id === id);
   $('title').value = cur.title; $('script').value = cur.text;
   $('list').style.display = 'none'; $('setup').style.display = 'flex';
+  refreshSetup();
 }
 function saveCur() {
   if (!cur) return;
@@ -178,19 +183,37 @@ $('imp').onclick = () => $('file').click();
 $('file').onchange = () => { const f = $('file').files[0]; $('file').value = ''; if (f) importFile(f); };
 
 $('toList').onclick = () => { saveCur(); showList(); };
-$('script').oninput = $('title').oninput = saveCur;
+$('script').oninput = $('title').oninput = () => { saveCur(); refreshSetup(); };
 $('del').onclick = () => { if (confirm('Excluir este roteiro?')) { scripts = scripts.filter(s => s !== cur); persist(); showList(); } };
 
 $('fs').value = store('tp.fs') || 36;
 $('sp').value = store('tp.sp') || 60;
 $('mode').value = store('tp.mode') || 'speed';
+$('dur').value = store('tp.dur') || '2:00';
+$('wpm').value = store('tp.wpm') || 140;
 
 let stream, recorder, chunks = [], file;
-let y = 0, speed = 60, running = false, last = 0, words = [], idx = 0, rec = null, wake = null;
+let dur = 120, wpm = 140, y = 0, speed = 60, running = false, last = 0, words = [], idx = 0, rec = null, wake = null;
 
 const norm = s => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]/g, '');
 const say = t => $('msg').textContent = t || '';
 const setFs = v => { v = Math.max(20, Math.min(80, v)); $('fs').value = v; document.documentElement.style.setProperty('--fs', v + 'px'); store('tp.fs', v); };
+const parseDur = s => { const p = String(s).split(':').map(Number); const v = p.length > 1 ? p[0] * 60 + p[1] : p[0]; return v > 0 ? Math.min(v, 7200) : 120; };
+const fmtDur = v => Math.floor(v / 60) + ':' + String(Math.round(v % 60)).padStart(2, '0');
+function adj(d) {
+  const m = $('mode').value;
+  if (m === 'time') { dur = Math.max(10, dur - 10 * d); $('dur').value = fmtDur(dur); store('tp.dur', $('dur').value); say('Duração ' + fmtDur(dur)); }
+  else if (m === 'wpm') { wpm = Math.max(40, Math.min(400, wpm + 10 * d)); $('wpm').value = wpm; store('tp.wpm', wpm); say(wpm + ' palavras/min'); }
+  else setSp(speed + 10 * d);
+}
+function refreshSetup() {
+  const m = $('mode').value;
+  $('rowSp').style.display = m === 'speed' ? '' : 'none';
+  $('rowDur').style.display = m === 'time' ? '' : 'none';
+  $('rowWpm').style.display = m === 'wpm' ? '' : 'none';
+  const n = wordCount($('script').value), w = +$('wpm').value || 140;
+  $('est').textContent = n ? `${n} palavras ≈ ${fmtDur(n / w * 60)} de fala a ${w} palavras/min` : '';
+}
 const setSp = v => { speed = Math.max(10, Math.min(200, v)); $('sp').value = speed; store('tp.sp', speed); say('Velocidade ' + speed); };
 
 function buildText() {
@@ -214,9 +237,11 @@ function frame(t) {
   const dt = Math.min(0.1, (t - last) / 1000);
   last = t;
   const max = $('txt').scrollHeight - $('ov').clientHeight * 0.6;
-  if ($('mode').value === 'speed') {
-    y += speed * dt;
-  } else if (words[idx]) {
+  const m = $('mode').value;
+  if (m === 'speed') y += speed * dt;
+  else if (m === 'time') y += max / dur * dt;
+  else if (m === 'wpm') y += wpm / 60 * max / Math.max(1, words.length) * dt;
+  else if (words[idx]) {
     const target = words[idx].el.offsetTop - innerHeight * 0.06;
     y += (target - y) * Math.min(1, dt * 4);
   }
@@ -274,6 +299,10 @@ function stopSpeech() { const r = rec; rec = null; if (r) try { r.stop(); } catc
 
 async function openCam() {
   saveCur(); store('tp.mode', $('mode').value); store('tp.sp', $('sp').value);
+  dur = parseDur($('dur').value); $('dur').value = fmtDur(dur); store('tp.dur', $('dur').value);
+  wpm = Math.max(40, Math.min(400, +$('wpm').value || 140)); store('tp.wpm', wpm);
+  dur = parseDur($('dur').value); $('dur').value = fmtDur(dur); store('tp.dur', $('dur').value);
+  wpm = Math.max(40, Math.min(400, +$('wpm').value || 140)); store('tp.wpm', wpm);
   speed = +$('sp').value; setFs(+$('fs').value);
   try {
     stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: true });
@@ -343,8 +372,9 @@ $('rec').onclick = () => {
 $('pause').onclick = () => { if (running) { stopScroll(); $('pause').textContent = '▶'; } else startScroll(); };
 $('fsm').onclick = () => setFs(+$('fs').value - 4);
 $('fsp').onclick = () => setFs(+$('fs').value + 4);
-$('spm').onclick = () => setSp(speed - 10);
-$('spp').onclick = () => setSp(speed + 10);
+$('spm').onclick = () => adj(-1);
+$('spp').onclick = () => adj(1);
+$('mode').onchange = $('wpm').oninput = refreshSetup;
 </script>
 </body>
 </html>
