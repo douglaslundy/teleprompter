@@ -19,7 +19,7 @@ html,body{margin:0;height:100%;background:#000;color:#fff;font-family:system-ui,
 .item{text-align:left;background:#111;border:1px solid #333;border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:4px}
 .item b{font-size:17px}.item small{color:#999}
 #empty{color:#999;text-align:center;margin-top:30px}
-#head{display:flex;gap:8px}
+.head{display:flex;gap:8px}
 #title{flex:1;min-width:0;background:#111;color:#fff;border:1px solid #333;border-radius:12px;padding:10px 12px;font-size:17px;font-weight:600}
 #script{flex:1;min-height:0;width:100%;background:#111;color:#fff;border:1px solid #333;border-radius:12px;padding:12px;font-size:18px;resize:none}
 label{display:flex;justify-content:space-between;align-items:center;gap:12px;font-size:15px}
@@ -42,12 +42,13 @@ button.main{background:#d22;border-color:#d22;font-weight:600;font-size:18px}
 </head>
 <body>
 <div id="list">
-  <button class="main" id="new">+ Novo roteiro</button>
+  <div class="head"><button class="main" id="new" style="flex:1">+ Novo roteiro</button><button id="imp">Importar</button></div>
+  <input type="file" id="file" accept=".txt,.docx,.pdf,text/plain" hidden>
   <div id="items"></div>
 </div>
 
 <div id="setup" style="display:none">
-  <div id="head">
+  <div class="head">
     <button id="toList">‹</button>
     <input id="title" placeholder="Título do roteiro">
     <button id="del">🗑</button>
@@ -110,6 +111,72 @@ function saveCur() {
   cur.at = Date.now(); persist();
 }
 $('new').onclick = () => { const s = { id: Date.now(), title: '', text: '', at: Date.now() }; scripts.push(s); persist(); editScript(s.id); $('title').focus(); };
+const utf8 = b => new TextDecoder().decode(b);
+
+async function zipEntry(buf, name) {
+  const v = new DataView(buf);
+  let e = buf.byteLength - 22;
+  while (e >= 0 && v.getUint32(e, true) !== 0x06054b50) e--;
+  if (e < 0) throw new Error('arquivo inválido');
+  let p = v.getUint32(e + 16, true);
+  for (let i = v.getUint16(e + 10, true); i > 0; i--) {
+    const nl = v.getUint16(p + 28, true), xl = v.getUint16(p + 30, true), cl = v.getUint16(p + 32, true);
+    if (utf8(new Uint8Array(buf, p + 46, nl)) === name) {
+      const lho = v.getUint32(p + 42, true), start = lho + 30 + v.getUint16(lho + 26, true) + v.getUint16(lho + 28, true);
+      const data = new Uint8Array(buf, start, v.getUint32(p + 20, true));
+      if (v.getUint16(p + 10, true) === 0) return utf8(data);
+      return new Response(new Blob([data]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).text();
+    }
+    p += 46 + nl + xl + cl;
+  }
+  throw new Error('texto não encontrado no arquivo');
+}
+
+async function readDocx(buf) {
+  const doc = new DOMParser().parseFromString(await zipEntry(buf, 'word/document.xml'), 'application/xml');
+  return Array.from(doc.getElementsByTagName('w:p')).map(p => {
+    let s = '';
+    p.querySelectorAll('t,tab,br').forEach(n => { s += n.localName === 't' ? n.textContent : n.localName === 'tab' ? ' ' : '\n'; });
+    return s;
+  }).join('\n');
+}
+
+async function readPdf(buf) {
+  if (!window.pdfjsLib) {
+    await new Promise((ok, no) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+      s.onload = ok; s.onerror = () => no(new Error('sem internet para carregar o leitor de PDF'));
+      document.head.append(s);
+    });
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  }
+  const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+  let out = '';
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const c = await (await pdf.getPage(i)).getTextContent();
+    out += c.items.map(t => t.str + (t.hasEOL ? '\n' : ' ')).join('') + '\n';
+  }
+  return out;
+}
+
+async function importFile(f) {
+  const ext = f.name.split('.').pop().toLowerCase();
+  try {
+    let text;
+    if (ext === 'txt') text = await f.text();
+    else if (ext === 'docx') text = await readDocx(await f.arrayBuffer());
+    else if (ext === 'pdf') text = await readPdf(await f.arrayBuffer());
+    else throw new Error('use TXT, DOCX ou PDF');
+    text = text.replace(/\r\n?/g, '\n').replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+    if (!text) throw new Error('nenhum texto encontrado (PDF escaneado só tem imagem)');
+    const s = { id: Date.now(), title: f.name.replace(/\.[^.]+$/, ''), text, at: Date.now() };
+    scripts.push(s); persist(); editScript(s.id);
+  } catch (e) { alert('Não consegui importar: ' + e.message); }
+}
+$('imp').onclick = () => $('file').click();
+$('file').onchange = () => { const f = $('file').files[0]; $('file').value = ''; if (f) importFile(f); };
+
 $('toList').onclick = () => { saveCur(); showList(); };
 $('script').oninput = $('title').oninput = saveCur;
 $('del').onclick = () => { if (confirm('Excluir este roteiro?')) { scripts = scripts.filter(s => s !== cur); persist(); showList(); } };
