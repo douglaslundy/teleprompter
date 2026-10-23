@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Teleprompter">
+<meta name="theme-color" content="#000000">
+<link rel="manifest" href="manifest.webmanifest">
+<title>Teleprompter</title>
+<style>
+:root{--fs:36px;color-scheme:dark}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:#000;color:#fff;font-family:system-ui,-apple-system,sans-serif}
+#setup{display:flex;flex-direction:column;gap:14px;padding:max(16px,env(safe-area-inset-top)) 16px 16px;height:100dvh}
+#script{flex:1;min-height:0;width:100%;background:#111;color:#fff;border:1px solid #333;border-radius:12px;padding:12px;font-size:18px;resize:none}
+label{display:flex;justify-content:space-between;align-items:center;gap:12px;font-size:15px}
+input[type=range]{flex:1}
+select,button{font:inherit;color:#fff;background:#222;border:1px solid #444;border-radius:12px;padding:12px 16px}
+button.main{background:#d22;border-color:#d22;font-weight:600;font-size:18px}
+#run{display:none;position:fixed;inset:0;background:#000}
+#cam{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:scaleX(-1)}
+#ov{position:absolute;left:0;right:0;top:0;height:52dvh;overflow:hidden;pointer-events:none;
+  background:linear-gradient(rgba(0,0,0,.7) 80%,transparent)}
+#txt{position:relative;padding:calc(env(safe-area-inset-top) + 6dvh) 20px 60dvh;font-size:var(--fs);line-height:1.35;font-weight:600;will-change:transform}
+#txt span.on{color:#ffd23f}
+#bar{position:absolute;left:0;right:0;bottom:0;display:flex;flex-wrap:wrap;gap:8px;justify-content:center;align-items:center;
+  padding:12px 12px max(12px,env(safe-area-inset-bottom));background:linear-gradient(transparent,rgba(0,0,0,.7))}
+#bar button{padding:12px 14px;min-width:48px}
+#bar button.rec{background:#d22;border-color:#d22;font-weight:600}
+#msg{position:absolute;left:12px;right:12px;bottom:calc(max(12px,env(safe-area-inset-bottom)) + 120px);text-align:center;font-size:14px;color:#ffd23f;text-shadow:0 0 4px #000}
+#count{position:absolute;inset:0;display:none;align-items:center;justify-content:center;font-size:30vw;font-weight:700;text-shadow:0 0 20px #000}
+</style>
+</head>
+<body>
+<div id="setup">
+  <textarea id="script" placeholder="Cole ou escreva o roteiro aqui"></textarea>
+  <label>Modo
+    <select id="mode"><option value="speed">Velocidade</option><option value="speech">Acompanhar minha fala</option></select>
+  </label>
+  <label>Letra <input id="fs" type="range" min="20" max="80" value="36"></label>
+  <label>Velocidade <input id="sp" type="range" min="10" max="200" value="60"></label>
+  <button class="main" id="open">Abrir câmera</button>
+</div>
+
+<div id="run">
+  <video id="cam" playsinline muted autoplay></video>
+  <div id="ov"><div id="txt"></div></div>
+  <div id="count"></div>
+  <div id="msg"></div>
+  <div id="bar">
+    <button id="back">✕</button>
+    <button id="fsm">A−</button><button id="fsp">A+</button>
+    <button id="spm">−</button><button id="spp">+</button>
+    <button id="pause">⏸</button>
+    <button id="try">Ensaiar</button>
+    <button id="rec" class="rec">● Gravar</button>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const store = (k, v) => { try { return v === undefined ? localStorage.getItem(k) : localStorage.setItem(k, v); } catch { return null; } };
+
+$('script').value = store('tp.script') || '';
+$('fs').value = store('tp.fs') || 36;
+$('sp').value = store('tp.sp') || 60;
+$('mode').value = store('tp.mode') || 'speed';
+
+let stream, recorder, chunks = [], file;
+let y = 0, speed = 60, running = false, last = 0, words = [], idx = 0, rec = null, wake = null;
+
+const norm = s => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]/g, '');
+const say = t => $('msg').textContent = t || '';
+const setFs = v => { v = Math.max(20, Math.min(80, v)); $('fs').value = v; document.documentElement.style.setProperty('--fs', v + 'px'); store('tp.fs', v); };
+const setSp = v => { speed = Math.max(10, Math.min(200, v)); $('sp').value = speed; store('tp.sp', speed); say('Velocidade ' + speed); };
+
+function buildText() {
+  const el = $('txt');
+  el.textContent = '';
+  words = [];
+  $('script').value.split(/(\s+)/).forEach(tok => {
+    if (!tok) return;
+    if (/^\s+$/.test(tok)) { el.append(tok.includes('\n') ? document.createElement('br') : ' '); return; }
+    const s = document.createElement('span');
+    s.textContent = tok;
+    el.append(s);
+    words.push({ el: s, n: norm(tok) });
+  });
+  y = 0; idx = 0;
+  el.style.transform = 'translateY(0)';
+}
+
+function frame(t) {
+  if (!running) return;
+  const dt = Math.min(0.1, (t - last) / 1000);
+  last = t;
+  const max = $('txt').scrollHeight - $('ov').clientHeight * 0.6;
+  if ($('mode').value === 'speed') {
+    y += speed * dt;
+  } else if (words[idx]) {
+    const target = words[idx].el.offsetTop - innerHeight * 0.06;
+    y += (target - y) * Math.min(1, dt * 4);
+  }
+  y = Math.max(0, Math.min(y, max));
+  $('txt').style.transform = `translateY(${-y}px)`;
+  requestAnimationFrame(frame);
+}
+
+function startScroll() {
+  running = true; last = performance.now();
+  requestAnimationFrame(frame);
+  $('pause').textContent = '⏸';
+  if (navigator.wakeLock) navigator.wakeLock.request('screen').then(w => wake = w).catch(() => {});
+}
+function stopScroll() { running = false; if (wake) { wake.release().catch(() => {}); wake = null; } }
+
+function startSpeech() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) return say('Este navegador não reconhece fala. Use o modo Velocidade.');
+  rec = new SR();
+  rec.lang = 'pt-BR'; rec.continuous = true; rec.interimResults = true;
+  rec.onresult = e => {
+    const heard = Array.from(e.results).map(r => r[0].transcript).join(' ').split(/\s+/).map(norm).filter(w => w.length > 2).slice(-4);
+    let pos = idx;
+    for (const h of heard) {
+      for (let j = pos; j < Math.min(pos + 15, words.length); j++) {
+        if (words[j].n === h) { pos = j + 1; break; }
+      }
+    }
+    if (pos > idx) {
+      words[idx]?.el.classList.remove('on');
+      idx = Math.min(pos, words.length - 1);
+      words[idx].el.classList.add('on');
+    }
+  };
+  rec.onerror = e => say('Reconhecimento: ' + e.error + (e.error === 'not-allowed' ? ' (permita o microfone)' : ''));
+  rec.onend = () => { if (running && rec) try { rec.start(); } catch {} };
+  try { rec.start(); say('Ouvindo… comece a falar'); } catch (e) { say('Falha ao iniciar reconhecimento'); }
+}
+function stopSpeech() { const r = rec; rec = null; if (r) try { r.stop(); } catch {} }
+
+async function openCam() {
+  store('tp.script', $('script').value); store('tp.mode', $('mode').value); store('tp.sp', $('sp').value);
+  speed = +$('sp').value; setFs(+$('fs').value);
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: true });
+  } catch (e) { return alert('Sem acesso à câmera/microfone: ' + e.message); }
+  $('cam').srcObject = stream;
+  buildText();
+  $('setup').style.display = 'none'; $('run').style.display = 'block';
+  $('try').style.display = $('rec').style.display = '';
+  say('');
+}
+
+function closeCam() {
+  stopScroll(); stopSpeech();
+  if (recorder && recorder.state !== 'inactive') recorder.stop();
+  stream?.getTracks().forEach(t => t.stop()); stream = null;
+  $('run').style.display = 'none'; $('setup').style.display = 'flex';
+}
+
+function countdown() {
+  return new Promise(res => {
+    let n = 3; const c = $('count'); c.style.display = 'flex'; c.textContent = n;
+    const i = setInterval(() => { n--; if (n) c.textContent = n; else { clearInterval(i); c.style.display = 'none'; res(); } }, 1000);
+  });
+}
+
+async function begin(record) {
+  buildText();
+  $('try').style.display = $('rec').style.display = 'none';
+  await countdown();
+  if (record) {
+    const type = ['video/mp4', 'video/webm;codecs=vp9,opus', 'video/webm'].find(t => MediaRecorder.isTypeSupported(t));
+    chunks = [];
+    recorder = new MediaRecorder(stream, type ? { mimeType: type } : undefined);
+    recorder.ondataavailable = e => e.data.size && chunks.push(e.data);
+    recorder.onstop = () => {
+      const ext = recorder.mimeType.includes('mp4') ? 'mp4' : 'webm';
+      file = new File(chunks, `teleprompter-${Date.now()}.${ext}`, { type: recorder.mimeType });
+      $('rec').textContent = '💾 Salvar'; $('rec').style.display = ''; $('rec').dataset.state = 'save';
+      say('Gravação pronta. Toque em Salvar.');
+    };
+    recorder.start(1000);
+  }
+  if ($('mode').value === 'speech') startSpeech();
+  startScroll();
+  $('rec').style.display = ''; $('rec').textContent = record ? '■ Parar' : '■ Parar ensaio';
+  $('rec').dataset.state = record ? 'stop' : 'stopTry';
+}
+
+async function save() {
+  try {
+    if (navigator.canShare && navigator.canShare({ files: [file] })) return await navigator.share({ files: [file] });
+  } catch (e) { if (e.name === 'AbortError') return; }
+  const a = document.createElement('a'); a.href = URL.createObjectURL(file); a.download = file.name; a.click();
+}
+
+$('open').onclick = openCam;
+$('back').onclick = closeCam;
+$('try').onclick = () => begin(false);
+$('rec').onclick = () => {
+  const s = $('rec').dataset.state;
+  if (s === 'save') return save();
+  if (s === 'stop') { stopScroll(); stopSpeech(); recorder.stop(); return; }
+  if (s === 'stopTry') { stopScroll(); stopSpeech(); $('rec').textContent = '● Gravar'; $('rec').dataset.state = ''; $('try').style.display = ''; say(''); return; }
+  begin(true);
+};
+$('pause').onclick = () => { if (running) { stopScroll(); $('pause').textContent = '▶'; } else startScroll(); };
+$('fsm').onclick = () => setFs(+$('fs').value - 4);
+$('fsp').onclick = () => setFs(+$('fs').value + 4);
+$('spm').onclick = () => setSp(speed - 10);
+$('spp').onclick = () => setSp(speed + 10);
+</script>
+</body>
+</html>
