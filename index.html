@@ -80,6 +80,9 @@ button.main{background:#d22;border-color:#d22;font-weight:600;font-size:18px}
     <label><span data-i18n="camera">Câmera</span> <select id="ccam"><option value="user" data-i18n="front">Frontal</option><option value="environment" data-i18n="rear">Traseira</option></select></label>
     <label><span data-i18n="res">Resolução</span> <select id="cres"><option value="720">720p</option><option value="1080">1080p</option><option value="2160">4K</option></select></label>
     <label><span data-i18n="aspect">Proporção</span> <select id="casp"><option value="9:16" data-i18n="a916">9:16 vertical</option><option value="16:9" data-i18n="a169">16:9 horizontal</option><option value="1:1" data-i18n="a11">1:1 quadrado</option></select></label>
+    <label><span data-i18n="mic">Microfone</span> <select id="cmic"></select></label>
+    <label><span data-i18n="noise">Reduzir ruído</span> <input type="checkbox" id="cnoise" checked></label>
+    <label><span data-i18n="echo">Cancelar eco</span> <input type="checkbox" id="cecho" checked></label>
   </details>
   <details id="look"><summary data-i18n="look">Aparência</summary>
     <label><span data-i18n="theme">Tema</span> <select id="theme"><option value="0" data-i18n="th0">Branco no escuro</option><option value="1" data-i18n="th1">Amarelo no escuro</option><option value="2" data-i18n="th2">Preto no branco</option><option value="3" data-i18n="th3">Verde no escuro</option><option value="x" data-i18n="thX">Personalizado</option></select></label>
@@ -193,6 +196,9 @@ const LANGS = {
 Object.assign(LANGS.pt, { recsTitle: 'Gravações', noRecs: 'Nenhuma gravação salva ainda.', play: '▶ Ver', share: 'Compartilhar', del: '🗑', delRec: 'Excluir esta gravação?' });
 Object.assign(LANGS.en, { recsTitle: 'Recordings', noRecs: 'No recordings saved yet.', play: '▶ Watch', share: 'Share', del: '🗑', delRec: 'Delete this recording?' });
 Object.assign(LANGS.es, { recsTitle: 'Grabaciones', noRecs: 'Aún no hay grabaciones guardadas.', play: '▶ Ver', share: 'Compartir', del: '🗑', delRec: '¿Eliminar esta grabación?' });
+Object.assign(LANGS.pt, { mic: 'Microfone', micAuto: 'Automático', noise: 'Reduzir ruído', echo: 'Cancelar eco' });
+Object.assign(LANGS.en, { mic: 'Microphone', micAuto: 'Automatic', noise: 'Noise reduction', echo: 'Echo cancellation' });
+Object.assign(LANGS.es, { mic: 'Micrófono', micAuto: 'Automático', noise: 'Reducir ruido', echo: 'Cancelar eco' });
 Object.assign(LANGS.pt, { templates: 'Modelos', take: 'Novo trecho', takeN: n => `trecho ${n}`, clock: 'Contador de tempo', approx: m => `≈ ${m}` });
 Object.assign(LANGS.en, { templates: 'Templates', take: 'New take', takeN: n => `take ${n}`, clock: 'Time counter', approx: m => `≈ ${m}` });
 Object.assign(LANGS.es, { templates: 'Plantillas', take: 'Nueva toma', takeN: n => `toma ${n}`, clock: 'Contador de tiempo', approx: m => `≈ ${m}` });
@@ -551,9 +557,20 @@ function startSpeech() {
 }
 function stopSpeech() { const r = rec; rec = null; if (r) try { r.stop(); } catch {} }
 
-const camCfg = { f: 'user', r: '1080', a: '9:16' };
+const camCfg = { f: 'user', r: '1080', a: '9:16', n: true, e: true, m: '' };
 try { Object.assign(camCfg, JSON.parse(store('tp.cam'))); } catch {}
-$('ccam').value = camCfg.f; $('cres').value = camCfg.r; $('casp').value = camCfg.a;
+$('ccam').value = camCfg.f; $('cres').value = camCfg.r; $('casp').value = camCfg.a; $('cnoise').checked = camCfg.n; $('cecho').checked = camCfg.e;
+const saveCam = () => store('tp.cam', JSON.stringify({ f: $('ccam').value, r: $('cres').value, a: $('casp').value, n: $('cnoise').checked, e: $('cecho').checked, m: $('cmic').value }));
+async function listMics() {
+  let mics = [];
+  try { mics = (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === 'audioinput' && d.deviceId); } catch {}
+  const sel = $('cmic'), want = sel.value || camCfg.m;
+  sel.textContent = '';
+  const auto = document.createElement('option'); auto.value = ''; auto.textContent = tr('micAuto'); sel.append(auto);
+  mics.forEach((d, i) => { const o = document.createElement('option'); o.value = d.deviceId; o.textContent = d.label || 'Mic ' + (i + 1); sel.append(o); });
+  sel.value = [...sel.options].some(o => o.value === want) ? want : '';
+}
+listMics();
 
 async function startStream() {
   stream?.getTracks().forEach(t => t.stop());
@@ -561,7 +578,8 @@ async function startStream() {
   const w = aw === ah ? sh : aw > ah ? lg : sh, h = aw === ah ? sh : aw > ah ? sh : lg;
   const f = $('ccam').value;
   try {
-    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: f }, width: { ideal: w }, height: { ideal: h }, aspectRatio: { ideal: aw / ah } }, audio: true });
+    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: f }, width: { ideal: w }, height: { ideal: h }, aspectRatio: { ideal: aw / ah } }, audio: { noiseSuppression: $('cnoise').checked, echoCancellation: $('cecho').checked, autoGainControl: true, ...($('cmic').value && { deviceId: { exact: $('cmic').value } }) } });
+    listMics();
   } catch (e) { alert(tr('camDenied', e.message)); return false; }
   const v = $('cam');
   v.style.transform = f === 'user' ? 'scaleX(-1)' : 'none';
@@ -584,7 +602,7 @@ async function openCam() {
   dur = parseDur($('dur').value); $('dur').value = fmtDur(dur); store('tp.dur', $('dur').value);
   wpm = Math.max(40, Math.min(400, +$('wpm').value || 140)); store('tp.wpm', wpm);
   speed = +$('sp').value; setFs(+$('fs').value);
-  store('tp.cam', JSON.stringify({ f: $('ccam').value, r: $('cres').value, a: $('casp').value }));
+  saveCam();
   if (!await startStream()) return;
   buildText();
   $('setup').style.display = 'none'; $('run').style.display = 'block';
@@ -687,7 +705,7 @@ $('back').onclick = closeCam;
 $('flip').onclick = async () => {
   if ($('rec').dataset.state === 'stop') return;
   $('ccam').value = $('ccam').value === 'user' ? 'environment' : 'user';
-  store('tp.cam', JSON.stringify({ f: $('ccam').value, r: $('cres').value, a: $('casp').value }));
+  saveCam();
   await startStream();
 };
 $('try').onclick = () => begin(false);
