@@ -39,6 +39,10 @@ dialog input{width:100%;margin-bottom:16px;background:#111;color:#fff;border:1px
 dialog .acts{display:flex;gap:10px;justify-content:flex-end;margin:0}
 dialog .acts button{flex:0 1 auto;min-width:96px}
 dialog button.danger{background:#d22;border-color:#d22;font-weight:600}
+body.pip{margin:0;background:var(--bg);overflow:hidden}
+.pip #ov{position:fixed;inset:0;height:auto;pointer-events:auto;background:var(--bg);cursor:pointer}
+.pip #txt{padding-top:35dvh;max-width:none}
+.pip #rl{top:35dvh}
 button.main{background:#d22;border-color:#d22;font-weight:600;font-size:18px}
 #run{touch-action:none;display:none;position:fixed;inset:0;background:#000}
 #cam{position:absolute;left:0;top:0;width:100%;height:100%;object-fit:fill;background:#000}
@@ -125,6 +129,7 @@ button.main{background:#d22;border-color:#d22;font-weight:600;font-size:18px}
     <button id="back">✕</button>
     <button id="flip">⟲</button>
     <button id="rcBtn" title="Controle remoto">📱</button>
+    <button id="pipBtn" title="Janela flutuante" hidden>🪟</button>
     <button id="fsm">A−</button><button id="fsp">A+</button>
     <button id="spm">−</button><button id="spp">+</button>
     <button id="pause">⏸</button>
@@ -135,7 +140,8 @@ button.main{background:#d22;border-color:#d22;font-weight:600;font-size:18px}
 </div>
 
 <script>
-const $ = id => document.getElementById(id);
+let pipWin = null; // janela flutuante (Document PiP): o texto (#ov) mora nela enquanto aberta
+const $ = id => document.getElementById(id) || pipWin?.document.getElementById(id);
 const store = (k, v) => { try { return v === undefined ? localStorage.getItem(k) : localStorage.setItem(k, v); } catch { return null; } };
 
 const LANGS = {
@@ -657,6 +663,34 @@ $('rcBtn').onclick = async () => {
   } catch { rcCode = ''; uiAlert(tr('rcFail')); }
 };
 
+// Aba em segundo plano nao recebe requestAnimationFrame: com a janela flutuante aberta o loop roda no rAF dela.
+let loopGen = 0;
+const sched = () => { const g = loopGen; (pipWin || window).requestAnimationFrame(t => g === loopGen && frame(t)); };
+const restartLoop = () => { loopGen++; last = performance.now(); if (running) sched(); };
+const refreshPad = () => { padTop = parseFloat(getComputedStyle($('txt')).paddingTop); };
+
+if ('documentPictureInPicture' in window) $('pipBtn').hidden = false;
+$('pipBtn').onclick = async () => {
+  if (pipWin) return pipWin.close();
+  let w;
+  try { w = await documentPictureInPicture.requestWindow({ width: 520, height: 300 }); } catch { return; }
+  document.querySelectorAll('style').forEach(s => w.document.head.append(s.cloneNode(true)));
+  w.document.title = 'Teleprompter'; w.document.body.className = 'pip';
+  const copyVars = () => { w.document.documentElement.style.cssText = document.documentElement.style.cssText; };
+  copyVars(); const vt = setInterval(copyVars, 300);
+  const ov = $('ov'); w.document.body.append(ov); pipWin = w;
+  w.addEventListener('click', () => $('pause').onclick());
+  w.addEventListener('keydown', e => {
+    if (e.code === 'Space') { e.preventDefault(); $('pause').onclick(); }
+    else if (e.key === 'ArrowUp') adj(1); else if (e.key === 'ArrowDown') adj(-1);
+  });
+  w.addEventListener('pagehide', () => {
+    clearInterval(vt); $('run').insertBefore(ov, $('clk')); pipWin = null;
+    $('pipBtn').style.background = ''; refreshPad(); restartLoop();
+  });
+  $('pipBtn').style.background = '#2a7'; refreshPad(); restartLoop();
+};
+
 function frame(t) {
   if (!running) return;
   const dt = Math.min(0.1, (t - last) / 1000);
@@ -684,12 +718,12 @@ function frame(t) {
     const left = max <= 0 ? 0 : m === 'speed' ? (max - y) / speed : m === 'time' ? (max - y) / (max / dur) : words.length * (1 - y / max) / wpm * 60;
     $('clk').textContent = `⏱ ${fmtDur(elapsed)} · -${fmtDur(Math.max(0, left))}`;
   }
-  requestAnimationFrame(frame);
+  sched();
 }
 
 function startScroll() {
   running = true; last = lastHeard = performance.now();
-  requestAnimationFrame(frame);
+  sched();
   $('pause').textContent = '⏸';
   if (navigator.wakeLock) navigator.wakeLock.request('screen').then(w => wake = w).catch(() => {});
 }
@@ -794,7 +828,7 @@ async function openCam() {
 }
 
 function closeCam() {
-  rcStop(); stopScroll(); stopSpeech();
+  pipWin?.close(); rcStop(); stopScroll(); stopSpeech();
   if (recorder && recorder.state !== 'inactive') recorder.stop();
   stream?.getTracks().forEach(t => t.stop()); stream = null;
   $('run').style.display = 'none'; $('setup').style.display = 'flex'; $('cont').style.display = 'none';
