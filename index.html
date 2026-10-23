@@ -20,7 +20,7 @@ html,body{margin:0;height:100%;background:#000;color:#fff;font-family:system-ui,
 #setup,#list,#recs{width:100%;max-width:760px;margin-inline:auto;height:100dvh;padding:max(16px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(16px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left))}
 #items,#recItems{flex:1;min-height:0;overflow:auto;display:flex;flex-direction:column;gap:8px}
 .item{text-align:left;background:#111;border:1px solid #333;border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:4px}
-.item b{font-size:17px}.item video{width:100%;border-radius:8px;background:#000;max-height:50dvh}.acts{display:flex;gap:8px;margin-top:6px}.acts button{flex:1;padding:8px}.item small{color:#999}
+.item b{font-size:17px}.item video{width:100%;border-radius:8px;background:#000;max-height:50dvh}.acts{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}.acts button{flex:1;padding:8px}.item small{color:#999}
 #est{color:#999;font-size:14px;text-align:center}
 #empty{color:#999;text-align:center;margin-top:30px}
 .head{display:flex;gap:8px;flex-wrap:wrap}
@@ -451,6 +451,7 @@ $('wpm').value = store('tp.wpm') || 140;
 $('sens').value = store('tp.sens') || 1;
 
 let stream, recorder, chunks = [], file;
+let capT = [], capT0 = 0, capFrom = 0, yi = 0; // legenda: capT[i] = ms (desde o inicio da gravacao) em que a palavra i foi alcancada
 let elapsed = 0, clkAt = 0, take = 1, drag = false, barriers = [], lastHeard = 0, fb = false, padTop = 0, dur = 120, wpm = 140, y = 0, speed = 60, running = false, last = 0, words = [], idx = 0, rec = null, wake = null;
 
 const norm = s => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]/g, '');
@@ -492,7 +493,7 @@ function buildText() {
     el.append(s);
     words.push({ el: s, n: norm(tok) });
   });
-  y = 0; idx = 0; elapsed = 0;
+  y = 0; idx = 0; elapsed = 0; yi = 0; capT = []; capT0 = 0;
   padTop = parseFloat(getComputedStyle(el).paddingTop);
   el.style.transform = 'translateY(0)';
 }
@@ -535,6 +536,46 @@ const maxY = () => $('txt').scrollHeight - $('ov').clientHeight * 0.6;
   });
 })();
 
+// Legenda SRT a partir do roteiro: cada palavra recebe o instante em que a leitura chegou nela (fala: palavra ouvida;
+// demais modos: palavra na linha de leitura, aproximado). Palavras puladas sao interpoladas.
+const srtTime = ms => { const h = Math.floor(ms / 3600000), m = Math.floor(ms / 60000) % 60, s = Math.floor(ms / 1000) % 60;
+  return [h, m, s].map(n => String(n).padStart(2, '0')).join(':') + ',' + String(Math.round(ms % 1000)).padStart(3, '0'); };
+function srtFrom(texts, times, total) {
+  let last = -1; for (let i = 0; i < texts.length; i++) if (times[i] !== undefined) last = i;
+  if (last < 0) return '';
+  const T = []; let prev = 0;
+  for (let i = 0; i <= last; i++) {
+    if (times[i] !== undefined) { T[i] = times[i]; prev = i; continue; }
+    let nx = i; while (times[nx] === undefined) nx++;
+    T[i] = times[prev] + (times[nx] - times[prev]) * (i - prev) / (nx - prev);
+  }
+  // palavras que chegaram juntas (mesma linha, ou salto da fala) dividem o intervalo ate a proxima chegada
+  for (let i = 0; i <= last;) {
+    let j = i; while (j + 1 <= last && T[j + 1] === T[i]) j++;
+    const nxt = j + 1 <= last ? T[j + 1] : Math.min(T[i] + (j - i + 1) * 350, Math.max(total, T[i] + 350));
+    for (let k = i; k <= j; k++) T[k] = T[i] + (nxt - T[i]) * (k - i) / (j - i + 1);
+    i = j + 1;
+  }
+  const cues = []; let c = null;
+  for (let i = 0; i <= last; i++) {
+    if (!c) c = { a: i, w: [] };
+    c.w.push(texts[i]);
+    if (c.w.length >= 8 || c.w.join(' ').length >= 40 || /[.!?…]$/.test(texts[i])) { c.b = i; cues.push(c); c = null; }
+  }
+  if (c) { c.b = last; cues.push(c); }
+  return cues.map((q, n) => {
+    const a = T[q.a], nextA = cues[n + 1] ? T[cues[n + 1].a] : a + 4000;
+    const b = Math.max(a + 200, Math.min(nextA, a + 5000, cues[n + 1] ? Infinity : Math.max(total, a + 600))); // termina quando a proxima comeca: sem sobreposicao
+    return `${n + 1}\n${srtTime(a)} --> ${srtTime(b)}\n${q.w.join(' ')}\n`;
+  }).join('\n');
+}
+function sampleCaps(t) {
+  if (!capT0 || !recorder || recorder.state !== 'recording') return;
+  while (yi < words.length - 1 && words[yi + 1].el.offsetTop - padTop <= y) yi++;
+  const p = $('mode').value === 'speech' && !fb ? idx : yi, now = Date.now() - capT0;
+  for (let i = capFrom; i <= p; i++) if (capT[i] === undefined) capT[i] = now;
+}
+
 // pagina = altura visivel menos uma linha de contexto; a linha de leitura volta ao topo a cada virada
 function shownY() {
   if (!look.page) return y;
@@ -562,6 +603,7 @@ function frame(t) {
     y += (target - y) * Math.min(1, dt * 4);
   }
   y = Math.max(0, Math.min(y, max));
+  sampleCaps();
   $('txt').style.transform = `translateY(${-shownY()}px)`;
   if (look.clk && t - clkAt > 500) {
     clkAt = t;
@@ -708,12 +750,16 @@ async function begin(record, keep) {
     recorder.ondataavailable = e => e.data.size && chunks.push(e.data);
     const t0 = Date.now(), maxS = q?.plan.max_video_seconds || 0;
     const cap = maxS && setTimeout(() => { if (recorder.state !== 'inactive') { alert(tr('quotaCut')); recorder.stop(); stopScroll(); stopSpeech(); } }, maxS * 1000);
+    capT = []; capT0 = t0; yi = 0; // novo trecho comeca onde a leitura esta, nao na palavra 0
+    while (yi < words.length - 1 && words[yi + 1].el.offsetTop - padTop <= y) yi++;
+    capFrom = $('mode').value === 'speech' ? idx : words.findIndex(w => w.el.offsetTop === words[yi].el.offsetTop); // inclui a linha inteira
     recorder.onstop = () => {
       clearTimeout(cap);
+      const srt = srtFrom(words.map(w => w.el.textContent).slice(capFrom), capT.slice(capFrom), Date.now() - t0); capT0 = 0;
       if (store('tp.token')) api('/usage/video', { seconds: Math.max(1, Math.round((Date.now() - t0) / 1000)) }).catch(() => {});
       const ext = recorder.mimeType.includes('mp4') ? 'mp4' : 'webm';
       file = new File(chunks, `teleprompter-${Date.now()}${take > 1 ? '-t' + take : ''}.${ext}`, { type: recorder.mimeType });
-      dbDo('readwrite', st => st.put({ id: Date.now(), name: file.name, title: (cur?.title || '') + (take > 1 ? ' · ' + tr('takeN', take) : ''), at: Date.now(), size: file.size, type: file.type, blob: file }));
+      dbDo('readwrite', st => st.put({ id: Date.now(), name: file.name, title: (cur?.title || '') + (take > 1 ? ' · ' + tr('takeN', take) : ''), at: Date.now(), size: file.size, type: file.type, blob: file, srt }));
       $('rec').textContent = tr('save'); $('rec').style.display = $('cont').style.display = ''; $('rec').dataset.state = 'save';
       say(tr('recReady'));
     };
@@ -759,7 +805,9 @@ async function showRecs() {
     bs.onclick = () => save(new File([r.blob], r.name, { type: r.type }));
     const bd = document.createElement('button'); bd.textContent = tr('del');
     bd.onclick = async () => { if (confirm(tr('delRec'))) { await dbDo('readwrite', st => st.delete(r.id)); showRecs(); } };
-    acts.append(bp, bs, bd); it.append(ti, m, acts); box.append(it);
+    const bt = document.createElement('button'); bt.textContent = 'SRT'; bt.hidden = !r.srt;
+    bt.onclick = () => save(new File([r.srt], r.name.replace(/\.[^.]+$/, '') + '.srt', { type: 'application/x-subrip' }));
+    acts.append(bp, bs, bt, bd); it.append(ti, m, acts); box.append(it);
   });
 }
 
