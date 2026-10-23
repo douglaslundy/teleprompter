@@ -42,12 +42,14 @@ button.main{background:#d22;border-color:#d22;font-weight:600;font-size:18px}
 #bar button{padding:12px 14px;min-width:48px}
 #bar button.rec{background:#d22;border-color:#d22;font-weight:600}
 #msg{position:absolute;left:12px;right:12px;bottom:calc(max(12px,env(safe-area-inset-bottom)) + 120px);text-align:center;font-size:14px;color:#ffd23f;text-shadow:0 0 4px #000}
+#clk{position:absolute;right:10px;top:calc(env(safe-area-inset-top) + 4px);font-size:14px;font-variant-numeric:tabular-nums;color:#fff;background:rgba(0,0,0,.55);border-radius:8px;padding:3px 8px;pointer-events:none;display:none}
 #count{position:absolute;inset:0;display:none;align-items:center;justify-content:center;font-size:30vw;font-weight:700;text-shadow:0 0 20px #000}
 </style>
 </head>
 <body>
 <div id="list">
-  <div class="head"><button class="main" id="new" style="flex:1" data-i18n="newScript">+ Novo roteiro</button><button id="imp" data-i18n="import">Importar</button><button id="recsBtn" data-i18n="recsTitle">Gravações</button><select id="uil"><option value="pt">PT</option><option value="en">EN</option><option value="es">ES</option></select></div>
+  <div class="head"><button class="main" id="new" style="flex:1" data-i18n="newScript">+ Novo roteiro</button></div>
+  <div class="head"><button id="imp" data-i18n="import">Importar</button><button id="tplBtn" data-i18n="templates">Modelos</button><button id="recsBtn" data-i18n="recsTitle">Gravações</button><select id="uil"><option value="pt">PT</option><option value="en">EN</option><option value="es">ES</option></select></div>
   <input type="file" id="file" accept=".txt,.docx,.pdf,text/plain" hidden>
   <div id="items"></div>
 </div>
@@ -88,6 +90,7 @@ button.main{background:#d22;border-color:#d22;font-weight:600;font-size:18px}
     <label><span data-i18n="margins">Margens</span> <input id="cmx" type="range" min="0" max="60" value="20"></label>
     <label><span data-i18n="mh">Espelhar horizontal</span> <input type="checkbox" id="cmh"></label>
     <label><span data-i18n="mv">Espelhar vertical</span> <input type="checkbox" id="cmv"></label>
+    <label><span data-i18n="clock">Contador de tempo</span> <input type="checkbox" id="cclk"></label>
     <label><span data-i18n="rl">Linha de leitura</span> <input type="checkbox" id="crl"></label>
     <label><span data-i18n="dys">Fonte para dislexia</span> <input type="checkbox" id="cdys"></label>
   </details>
@@ -97,6 +100,7 @@ button.main{background:#d22;border-color:#d22;font-weight:600;font-size:18px}
 <div id="run">
   <video id="cam" playsinline muted autoplay></video>
   <div id="ov"><div id="rl"></div><div id="txt"></div></div>
+  <div id="clk"></div>
   <div id="count"></div>
   <div id="msg"></div>
   <div id="bar">
@@ -106,6 +110,7 @@ button.main{background:#d22;border-color:#d22;font-weight:600;font-size:18px}
     <button id="spm">−</button><button id="spp">+</button>
     <button id="pause">⏸</button>
     <button id="try" data-i18n="try">Ensaiar</button>
+    <button id="cont" data-i18n="take" style="display:none">Novo trecho</button>
     <button id="rec" class="rec" data-i18n="rec">● Gravar</button>
   </div>
 </div>
@@ -188,6 +193,32 @@ const LANGS = {
 Object.assign(LANGS.pt, { recsTitle: 'Gravações', noRecs: 'Nenhuma gravação salva ainda.', play: '▶ Ver', share: 'Compartilhar', del: '🗑', delRec: 'Excluir esta gravação?' });
 Object.assign(LANGS.en, { recsTitle: 'Recordings', noRecs: 'No recordings saved yet.', play: '▶ Watch', share: 'Share', del: '🗑', delRec: 'Delete this recording?' });
 Object.assign(LANGS.es, { recsTitle: 'Grabaciones', noRecs: 'Aún no hay grabaciones guardadas.', play: '▶ Ver', share: 'Compartir', del: '🗑', delRec: '¿Eliminar esta grabación?' });
+Object.assign(LANGS.pt, { templates: 'Modelos', take: 'Novo trecho', takeN: n => `trecho ${n}`, clock: 'Contador de tempo', approx: m => `≈ ${m}` });
+Object.assign(LANGS.en, { templates: 'Templates', take: 'New take', takeN: n => `take ${n}`, clock: 'Time counter', approx: m => `≈ ${m}` });
+Object.assign(LANGS.es, { templates: 'Plantillas', take: 'Nueva toma', takeN: n => `toma ${n}`, clock: 'Contador de tiempo', approx: m => `≈ ${m}` });
+const TEMPLATES = {
+  pt: [
+    ['Vídeo curto (Reels/TikTok)', 'Você sabia que [fato surpreendente]?\n\nA maioria das pessoas [erro comum], e isso custa [consequência].\n\nO segredo é simples: [dica principal].\n\nPrimeiro, [passo 1]. Depois, [passo 2]. Por fim, [passo 3].\n\nSe gostou, segue o perfil e comenta [pergunta] aqui embaixo.'],
+    ['Vendas', 'Olá, [nome]! Eu sou [seu nome], da [empresa].\n\nSe você hoje [dor do cliente], sei como isso atrapalha o seu dia.\n\nPor isso criamos [produto], que [principal benefício] em [prazo].\n\nNossos clientes já [resultado concreto].\n\nPara começar hoje, é só [próximo passo]. Posso te ajudar agora?'],
+    ['Aula', 'Bem-vindos à aula de hoje: [tema].\n\nAo final, vocês vão saber [objetivo 1] e [objetivo 2].\n\nVamos começar pelo conceito: [definição simples].\n\nUm exemplo prático: [exemplo].\n\nResumindo: [ponto 1], [ponto 2] e [ponto 3]. Na próxima aula vamos ver [próximo tema].'],
+    ['Notícia', 'Boa noite. [Manchete em uma frase].\n\nSegundo [fonte], [o que aconteceu], em [local], nesta [dia].\n\n[Detalhe importante 1]. [Detalhe importante 2].\n\nO caso segue em apuração. Voltamos com mais informações em instantes.'],
+    ['Discurso / Pregação', 'Irmãos e amigos, boa noite.\n\nHoje quero falar sobre [tema].\n\nEm [texto/ocasião] aprendemos que [mensagem central].\n\nPense em [história ou exemplo].\n\nA pergunta que fica é: [pergunta de reflexão].\n\nQue possamos [aplicação prática]. Muito obrigado.']
+  ],
+  en: [
+    ['Short video (Reels/TikTok)', 'Did you know [surprising fact]?\n\nMost people [common mistake], and it costs them [consequence].\n\nThe secret is simple: [main tip].\n\nFirst, [step 1]. Then, [step 2]. Finally, [step 3].\n\nIf you liked this, follow and tell me [question] in the comments.'],
+    ['Sales', "Hi [name]! I'm [your name] from [company].\n\nIf you're currently [customer pain], I know how much that slows your day.\n\nThat's why we built [product], which [main benefit] in [timeframe].\n\nOur customers already [concrete result].\n\nTo start today, just [next step]. Can I help you now?"],
+    ['Lesson', "Welcome to today's lesson: [topic].\n\nBy the end, you'll know [goal 1] and [goal 2].\n\nLet's start with the concept: [simple definition].\n\nA practical example: [example].\n\nIn short: [point 1], [point 2] and [point 3]. Next time we'll cover [next topic]."],
+    ['News', 'Good evening. [Headline in one sentence].\n\nAccording to [source], [what happened], in [place], on [day].\n\n[Key detail 1]. [Key detail 2].\n\nThe case is still under investigation. We will bring you more shortly.'],
+    ['Speech / Sermon', 'Friends, good evening.\n\nToday I want to talk about [topic].\n\nIn [text/occasion] we learn that [central message].\n\nThink of [story or example].\n\nThe question that remains is: [reflection question].\n\nMay we [practical application]. Thank you very much.']
+  ],
+  es: [
+    ['Video corto (Reels/TikTok)', '¿Sabías que [dato sorprendente]?\n\nLa mayoría de la gente [error común], y eso cuesta [consecuencia].\n\nEl secreto es simple: [consejo principal].\n\nPrimero, [paso 1]. Luego, [paso 2]. Por último, [paso 3].\n\nSi te gustó, sígueme y comenta [pregunta] abajo.'],
+    ['Ventas', 'Hola, [nombre]. Soy [tu nombre], de [empresa].\n\nSi hoy [dolor del cliente], sé cuánto afecta tu día.\n\nPor eso creamos [producto], que [beneficio principal] en [plazo].\n\nNuestros clientes ya [resultado concreto].\n\nPara empezar hoy, solo [siguiente paso]. ¿Te ayudo ahora?'],
+    ['Clase', 'Bienvenidos a la clase de hoy: [tema].\n\nAl final sabrán [objetivo 1] y [objetivo 2].\n\nEmpecemos por el concepto: [definición simple].\n\nUn ejemplo práctico: [ejemplo].\n\nEn resumen: [punto 1], [punto 2] y [punto 3]. En la próxima clase veremos [próximo tema].'],
+    ['Noticia', 'Buenas noches. [Titular en una frase].\n\nSegún [fuente], [qué ocurrió], en [lugar], este [día].\n\n[Detalle importante 1]. [Detalle importante 2].\n\nEl caso sigue en investigación. Volvemos con más información en unos instantes.'],
+    ['Discurso / Prédica', 'Hermanos y amigos, buenas noches.\n\nHoy quiero hablar sobre [tema].\n\nEn [texto/ocasión] aprendemos que [mensaje central].\n\nPiensa en [historia o ejemplo].\n\nLa pregunta que queda es: [pregunta de reflexión].\n\nQue podamos [aplicación práctica]. Muchas gracias.']
+  ]
+};
 const LOCALE = { pt: 'pt-BR', en: 'en-US', es: 'es-ES' };
 let lang = store('tp.lang') || { pt: 'pt', es: 'es' }[(navigator.language || 'pt').slice(0, 2)] || 'en';
 if (!LANGS[lang]) lang = 'pt';
@@ -207,7 +238,7 @@ const persist = () => store('tp.scripts', JSON.stringify(scripts));
 const wordCount = t => (t.trim().match(/\S+/g) || []).filter(w => w !== '//').length;
 
 function showList() {
-  cur = null;
+  cur = null; tplOpen = false;
   $('setup').style.display = $('recs').style.display = 'none'; $('list').style.display = 'flex';
   const box = $('items'); box.textContent = '';
   if (!scripts.length) { const e = document.createElement('div'); e.id = 'empty'; e.textContent = tr('emptyList'); box.append(e); }
@@ -216,6 +247,19 @@ function showList() {
     const t = document.createElement('b'); t.textContent = s.title || tr('untitled');
     const m = document.createElement('small'); m.textContent = `${tr('words', wordCount(s.text))} · ${new Date(s.at).toLocaleDateString(LOCALE[lang])}`;
     b.append(t, m); b.onclick = () => editScript(s.id); box.append(b);
+  });
+}
+let tplOpen = false;
+function showTemplates() {
+  tplOpen = true;
+  const box = $('items'); box.textContent = '';
+  (TEMPLATES[lang] || TEMPLATES.pt).forEach(([name, text]) => {
+    const b = document.createElement('button'); b.className = 'item';
+    const ti = document.createElement('b'); ti.textContent = name;
+    const m = document.createElement('small'); m.textContent = `${tr('words', wordCount(text))} · ${tr('approx', fmtDur(wordCount(text) / 140 * 60))}`;
+    b.append(ti, m);
+    b.onclick = () => { const sc = { id: Date.now(), title: name, text, at: Date.now() }; scripts.push(sc); persist(); editScript(sc.id); };
+    box.append(b);
   });
 }
 function editScript(id) {
@@ -232,7 +276,7 @@ function saveCur() {
 }
 $('new').onclick = () => { const s = { id: Date.now(), title: '', text: '', at: Date.now() }; scripts.push(s); persist(); editScript(s.id); $('title').focus(); };
 const themes = [['#ffffff', '#000000', '#ffd23f'], ['#ffe14d', '#000000', '#ffffff'], ['#000000', '#ffffff', '#c00000'], ['#7CFC00', '#000000', '#ffffff']];
-let look = { t: 0, fg: '#ffffff', bg: '#000000', hl: '#ffd23f', lh: 1.35, mx: 20, rl: false, dys: false, mh: false, mv: false };
+let look = { t: 0, fg: '#ffffff', bg: '#000000', hl: '#ffd23f', lh: 1.35, mx: 20, rl: false, clk: true, dys: false, mh: false, mv: false };
 try { Object.assign(look, JSON.parse(store('tp.look'))); } catch {}
 let dysFont = null;
 function applyLook() {
@@ -241,13 +285,14 @@ function applyLook() {
   r.setProperty('--lh', look.lh); r.setProperty('--mx', look.mx + 'px');
   $('ov').style.transform = `scale(${look.mh ? -1 : 1},${look.mv ? -1 : 1})`;
   $('rl').style.display = look.rl ? 'block' : 'none';
+  $('clk').style.display = look.clk ? 'block' : 'none';
   if (look.dys && !dysFont) {
     dysFont = new FontFace('OpenDyslexic', 'url(https://cdn.jsdelivr.net/npm/@fontsource/opendyslexic@5.2.5/files/opendyslexic-latin-700-normal.woff2)', { weight: '400 700' });
     dysFont.load().then(f => document.fonts.add(f)).catch(() => { dysFont = null; });
   }
   r.setProperty('--ff', (look.dys ? "'OpenDyslexic'," : '') + 'system-ui,-apple-system,sans-serif');
   $('theme').value = look.t; $('cfg').value = look.fg; $('cbg').value = look.bg; $('chl').value = look.hl;
-  $('clh').value = look.lh; $('cmx').value = look.mx; $('cmh').checked = look.mh; $('cmv').checked = look.mv; $('crl').checked = look.rl; $('cdys').checked = look.dys;
+  $('clh').value = look.lh; $('cmx').value = look.mx; $('cmh').checked = look.mh; $('cmv').checked = look.mv; $('crl').checked = look.rl; $('cclk').checked = look.clk; $('cdys').checked = look.dys;
   store('tp.look', JSON.stringify(look));
 }
 $('theme').onchange = () => { const t = $('theme').value; if (t !== 'x') { [look.fg, look.bg, look.hl] = themes[t]; look.t = +t; applyLook(); } };
@@ -256,6 +301,7 @@ $('clh').oninput = () => { look.lh = +$('clh').value; applyLook(); };
 $('cmx').oninput = () => { look.mx = +$('cmx').value; applyLook(); };
 $('cmh').onchange = () => { look.mh = $('cmh').checked; applyLook(); };
 $('cmv').onchange = () => { look.mv = $('cmv').checked; applyLook(); };
+$('cclk').onchange = () => { look.clk = $('cclk').checked; applyLook(); };
 $('crl').onchange = () => { look.rl = $('crl').checked; applyLook(); };
 $('cdys').onchange = () => { look.dys = $('cdys').checked; applyLook(); };
 applyLook();
@@ -338,7 +384,7 @@ $('wpm').value = store('tp.wpm') || 140;
 $('sens').value = store('tp.sens') || 1;
 
 let stream, recorder, chunks = [], file;
-let drag = false, barriers = [], lastHeard = 0, fb = false, padTop = 0, dur = 120, wpm = 140, y = 0, speed = 60, running = false, last = 0, words = [], idx = 0, rec = null, wake = null;
+let elapsed = 0, clkAt = 0, take = 1, drag = false, barriers = [], lastHeard = 0, fb = false, padTop = 0, dur = 120, wpm = 140, y = 0, speed = 60, running = false, last = 0, words = [], idx = 0, rec = null, wake = null;
 
 const norm = s => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]/g, '');
 const say = t => $('msg').textContent = t || '';
@@ -379,7 +425,7 @@ function buildText() {
     el.append(s);
     words.push({ el: s, n: norm(tok) });
   });
-  y = 0; idx = 0;
+  y = 0; idx = 0; elapsed = 0;
   padTop = parseFloat(getComputedStyle(el).paddingTop);
   el.style.transform = 'translateY(0)';
 }
@@ -427,6 +473,7 @@ function frame(t) {
   const dt = Math.min(0.1, (t - last) / 1000);
   last = t;
   const max = maxY();
+  elapsed += dt;
   const m = $('mode').value;
   if (m === 'speech' && !fb && t - lastHeard > 8000) { fb = true; say(tr('noVoice')); }
   if (drag) {}
@@ -442,6 +489,11 @@ function frame(t) {
   }
   y = Math.max(0, Math.min(y, max));
   $('txt').style.transform = `translateY(${-y}px)`;
+  if (look.clk && t - clkAt > 500) {
+    clkAt = t;
+    const left = max <= 0 ? 0 : m === 'speed' ? (max - y) / speed : m === 'time' ? (max - y) / (max / dur) : words.length * (1 - y / max) / wpm * 60;
+    $('clk').textContent = `⏱ ${fmtDur(elapsed)} · -${fmtDur(Math.max(0, left))}`;
+  }
   requestAnimationFrame(frame);
 }
 
@@ -543,7 +595,7 @@ function closeCam() {
   stopScroll(); stopSpeech();
   if (recorder && recorder.state !== 'inactive') recorder.stop();
   stream?.getTracks().forEach(t => t.stop()); stream = null;
-  $('run').style.display = 'none'; $('setup').style.display = 'flex';
+  $('run').style.display = 'none'; $('setup').style.display = 'flex'; $('cont').style.display = 'none';
 }
 
 function countdown() {
@@ -553,9 +605,10 @@ function countdown() {
   });
 }
 
-async function begin(record) {
-  buildText();
-  $('try').style.display = $('rec').style.display = 'none';
+async function begin(record, keep) {
+  if (!keep) buildText();
+  if (record) take = keep ? take + 1 : 1;
+  $('try').style.display = $('rec').style.display = $('cont').style.display = 'none';
   await countdown();
   if (record) {
     const type = ['video/mp4', 'video/webm;codecs=vp9,opus', 'video/webm'].find(t => MediaRecorder.isTypeSupported(t));
@@ -564,9 +617,9 @@ async function begin(record) {
     recorder.ondataavailable = e => e.data.size && chunks.push(e.data);
     recorder.onstop = () => {
       const ext = recorder.mimeType.includes('mp4') ? 'mp4' : 'webm';
-      file = new File(chunks, `teleprompter-${Date.now()}.${ext}`, { type: recorder.mimeType });
-      dbDo('readwrite', st => st.put({ id: Date.now(), name: file.name, title: cur?.title || '', at: Date.now(), size: file.size, type: file.type, blob: file }));
-      $('rec').textContent = tr('save'); $('rec').style.display = ''; $('rec').dataset.state = 'save';
+      file = new File(chunks, `teleprompter-${Date.now()}${take > 1 ? '-t' + take : ''}.${ext}`, { type: recorder.mimeType });
+      dbDo('readwrite', st => st.put({ id: Date.now(), name: file.name, title: (cur?.title || '') + (take > 1 ? ' · ' + tr('takeN', take) : ''), at: Date.now(), size: file.size, type: file.type, blob: file }));
+      $('rec').textContent = tr('save'); $('rec').style.display = $('cont').style.display = ''; $('rec').dataset.state = 'save';
       say(tr('recReady'));
     };
     recorder.start(1000);
@@ -627,6 +680,7 @@ showList();
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 $('uil').onchange = () => { lang = $('uil').value; store('tp.lang', lang); store('tp.slang', ''); applyLang(); showList(); };
 $('recsBtn').onclick = showRecs;
+$('tplBtn').onclick = () => tplOpen ? showList() : showTemplates();
 $('recsBack').onclick = showList;
 $('open').onclick = openCam;
 $('back').onclick = closeCam;
@@ -637,6 +691,7 @@ $('flip').onclick = async () => {
   await startStream();
 };
 $('try').onclick = () => begin(false);
+$('cont').onclick = () => begin(true, true);
 $('rec').onclick = () => {
   const s = $('rec').dataset.state;
   if (s === 'save') return save();
