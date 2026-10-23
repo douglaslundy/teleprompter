@@ -14,10 +14,10 @@
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;height:100%;background:#000;color:#fff;font-family:system-ui,-apple-system,sans-serif}
 #setup{display:flex;flex-direction:column;gap:14px;padding:max(16px,env(safe-area-inset-top)) 16px 16px;height:100dvh}
-#list{display:flex;flex-direction:column;gap:10px;padding:max(16px,env(safe-area-inset-top)) 16px 16px;height:100dvh}
-#items{flex:1;min-height:0;overflow:auto;display:flex;flex-direction:column;gap:8px}
+#list,#recs{display:flex;flex-direction:column;gap:10px;padding:max(16px,env(safe-area-inset-top)) 16px 16px;height:100dvh}
+#items,#recItems{flex:1;min-height:0;overflow:auto;display:flex;flex-direction:column;gap:8px}
 .item{text-align:left;background:#111;border:1px solid #333;border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:4px}
-.item b{font-size:17px}.item small{color:#999}
+.item b{font-size:17px}.item video{width:100%;border-radius:8px;background:#000;max-height:50dvh}.acts{display:flex;gap:8px;margin-top:6px}.acts button{flex:1;padding:8px}.item small{color:#999}
 #est{color:#999;font-size:14px;text-align:center}
 #empty{color:#999;text-align:center;margin-top:30px}
 .head{display:flex;gap:8px}
@@ -46,9 +46,14 @@ button.main{background:#d22;border-color:#d22;font-weight:600;font-size:18px}
 </head>
 <body>
 <div id="list">
-  <div class="head"><button class="main" id="new" style="flex:1" data-i18n="newScript">+ Novo roteiro</button><button id="imp" data-i18n="import">Importar</button><select id="uil"><option value="pt">PT</option><option value="en">EN</option><option value="es">ES</option></select></div>
+  <div class="head"><button class="main" id="new" style="flex:1" data-i18n="newScript">+ Novo roteiro</button><button id="imp" data-i18n="import">Importar</button><button id="recsBtn" data-i18n="recsTitle">Gravações</button><select id="uil"><option value="pt">PT</option><option value="en">EN</option><option value="es">ES</option></select></div>
   <input type="file" id="file" accept=".txt,.docx,.pdf,text/plain" hidden>
   <div id="items"></div>
+</div>
+
+<div id="recs" style="display:none">
+  <div class="head"><button id="recsBack">‹</button><b data-i18n="recsTitle" style="align-self:center;font-size:18px">Gravações</b></div>
+  <div id="recItems"></div>
 </div>
 
 <div id="setup" style="display:none">
@@ -179,6 +184,9 @@ const LANGS = {
     recReady: 'Grabación lista. Toca Guardar.'
   }
 };
+Object.assign(LANGS.pt, { recsTitle: 'Gravações', noRecs: 'Nenhuma gravação salva ainda.', play: '▶ Ver', share: 'Compartilhar', del: '🗑', delRec: 'Excluir esta gravação?' });
+Object.assign(LANGS.en, { recsTitle: 'Recordings', noRecs: 'No recordings saved yet.', play: '▶ Watch', share: 'Share', del: '🗑', delRec: 'Delete this recording?' });
+Object.assign(LANGS.es, { recsTitle: 'Grabaciones', noRecs: 'Aún no hay grabaciones guardadas.', play: '▶ Ver', share: 'Compartir', del: '🗑', delRec: '¿Eliminar esta grabación?' });
 const LOCALE = { pt: 'pt-BR', en: 'en-US', es: 'es-ES' };
 let lang = store('tp.lang') || { pt: 'pt', es: 'es' }[(navigator.language || 'pt').slice(0, 2)] || 'en';
 if (!LANGS[lang]) lang = 'pt';
@@ -199,7 +207,7 @@ const wordCount = t => (t.trim().match(/\S+/g) || []).filter(w => w !== '//').le
 
 function showList() {
   cur = null;
-  $('setup').style.display = 'none'; $('list').style.display = 'flex';
+  $('setup').style.display = $('recs').style.display = 'none'; $('list').style.display = 'flex';
   const box = $('items'); box.textContent = '';
   if (!scripts.length) { const e = document.createElement('div'); e.id = 'empty'; e.textContent = tr('emptyList'); box.append(e); }
   [...scripts].sort((a, b) => b.at - a.at).forEach(s => {
@@ -556,6 +564,7 @@ async function begin(record) {
     recorder.onstop = () => {
       const ext = recorder.mimeType.includes('mp4') ? 'mp4' : 'webm';
       file = new File(chunks, `teleprompter-${Date.now()}.${ext}`, { type: recorder.mimeType });
+      dbDo('readwrite', st => st.put({ id: Date.now(), name: file.name, title: cur?.title || '', at: Date.now(), size: file.size, type: file.type, blob: file }));
       $('rec').textContent = tr('save'); $('rec').style.display = ''; $('rec').dataset.state = 'save';
       say(tr('recReady'));
     };
@@ -567,16 +576,56 @@ async function begin(record) {
   $('rec').dataset.state = record ? 'stop' : 'stopTry';
 }
 
-async function save() {
+// Gravações ficam no IndexedDB do aparelho (o navegador pode limpá-las se faltar espaço).
+const db = new Promise(ok => {
   try {
-    if (navigator.canShare && navigator.canShare({ files: [file] })) return await navigator.share({ files: [file] });
+    const q = indexedDB.open('tp', 1);
+    q.onupgradeneeded = () => q.result.createObjectStore('rec', { keyPath: 'id' });
+    q.onsuccess = () => ok(q.result); q.onerror = () => ok(null);
+  } catch { ok(null); }
+});
+const dbDo = async (mode, fn) => {
+  const d = await db; if (!d) return [];
+  return new Promise(ok => { const q = fn(d.transaction('rec', mode).objectStore('rec')); q.onsuccess = () => ok(q.result); q.onerror = () => ok([]); });
+};
+navigator.storage?.persist?.().catch(() => {});
+
+async function showRecs() {
+  $('list').style.display = 'none'; $('recs').style.display = 'flex';
+  const box = $('recItems'); box.textContent = '';
+  const all = ((await dbDo('readonly', st => st.getAll())) || []).sort((a, b) => b.at - a.at);
+  if (!all.length) { const e = document.createElement('div'); e.id = 'empty'; e.textContent = tr('noRecs'); box.append(e); return; }
+  all.forEach(r => {
+    const it = document.createElement('div'); it.className = 'item';
+    const ti = document.createElement('b'); ti.textContent = r.title || r.name;
+    const m = document.createElement('small'); m.textContent = `${new Date(r.at).toLocaleString(LOCALE[lang])} · ${r.size < 1048576 ? Math.round(r.size / 1024) + " KB" : (r.size / 1048576).toFixed(1) + " MB"}`;
+    const acts = document.createElement('div'); acts.className = 'acts';
+    const bp = document.createElement('button'); bp.textContent = tr('play');
+    bp.onclick = () => {
+      if (it.querySelector('video')) return;
+      const v = document.createElement('video'); v.controls = v.playsInline = true; v.src = URL.createObjectURL(r.blob);
+      it.insertBefore(v, acts); v.play().catch(() => {});
+    };
+    const bs = document.createElement('button'); bs.textContent = tr('share');
+    bs.onclick = () => save(new File([r.blob], r.name, { type: r.type }));
+    const bd = document.createElement('button'); bd.textContent = tr('del');
+    bd.onclick = async () => { if (confirm(tr('delRec'))) { await dbDo('readwrite', st => st.delete(r.id)); showRecs(); } };
+    acts.append(bp, bs, bd); it.append(ti, m, acts); box.append(it);
+  });
+}
+
+async function save(f = file) {
+  try {
+    if (navigator.canShare && navigator.canShare({ files: [f] })) return await navigator.share({ files: [f] });
   } catch (e) { if (e.name === 'AbortError') return; }
-  const a = document.createElement('a'); a.href = URL.createObjectURL(file); a.download = file.name; a.click();
+  const a = document.createElement('a'); a.href = URL.createObjectURL(f); a.download = f.name; a.click();
 }
 
 applyLang();
 showList();
 $('uil').onchange = () => { lang = $('uil').value; store('tp.lang', lang); store('tp.slang', ''); applyLang(); showList(); };
+$('recsBtn').onclick = showRecs;
+$('recsBack').onclick = showList;
 $('open').onclick = openCam;
 $('back').onclick = closeCam;
 $('flip').onclick = async () => {
