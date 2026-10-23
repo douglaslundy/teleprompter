@@ -10,7 +10,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <title>Teleprompter</title>
 <style>
-:root{--fs:36px;color-scheme:dark}
+:root{--fs:36px;--fg:#ffffff;--bg:#000000;--hl:#ffd23f;--lh:1.35;--mx:20px;--ff:system-ui,-apple-system,sans-serif;color-scheme:dark}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;height:100%;background:#000;color:#fff;font-family:system-ui,-apple-system,sans-serif}
 #setup{display:flex;flex-direction:column;gap:14px;padding:max(16px,env(safe-area-inset-top)) 16px 16px;height:100dvh}
@@ -30,9 +30,11 @@ button.main{background:#d22;border-color:#d22;font-weight:600;font-size:18px}
 #run{display:none;position:fixed;inset:0;background:#000}
 #cam{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:scaleX(-1)}
 #ov{position:absolute;left:0;right:0;top:0;height:52dvh;overflow:hidden;pointer-events:none;
-  background:linear-gradient(rgba(0,0,0,.7) 80%,transparent)}
-#txt{position:relative;padding:calc(env(safe-area-inset-top) + 6dvh) 20px 60dvh;font-size:var(--fs);line-height:1.35;font-weight:600;will-change:transform}
-#txt span.on{color:#ffd23f}
+  background:linear-gradient(color-mix(in srgb,var(--bg) 70%,transparent) 80%,transparent)}
+#rl{position:absolute;left:0;right:0;top:calc(env(safe-area-inset-top) + 6dvh);height:calc(var(--fs)*var(--lh));background:rgba(255,255,255,.14);border-block:1px solid rgba(255,255,255,.4);display:none}
+#txt{position:relative;padding:calc(env(safe-area-inset-top) + 6dvh) var(--mx) 60dvh;font-size:var(--fs);line-height:var(--lh);font-weight:600;color:var(--fg);font-family:var(--ff);will-change:transform}
+#txt span.on{color:var(--hl)}
+#look{font-size:15px}#look summary{padding:6px 0;color:#bbb}#look label{margin:8px 0}#look input[type=color]{width:48px;height:32px;padding:0;border:0;background:none}
 #bar{position:absolute;left:0;right:0;bottom:0;display:flex;flex-wrap:wrap;gap:8px;justify-content:center;align-items:center;
   padding:12px 12px max(12px,env(safe-area-inset-bottom));background:linear-gradient(transparent,rgba(0,0,0,.7))}
 #bar button{padding:12px 14px;min-width:48px}
@@ -63,12 +65,22 @@ button.main{background:#d22;border-color:#d22;font-weight:600;font-size:18px}
   <label id="rowDur">Duração (mm:ss) <input id="dur" value="2:00" inputmode="numeric" size="6"></label>
   <label id="rowWpm">Palavras/min <input id="wpm" type="number" min="40" max="400" value="140"></label>
   <div id="est"></div>
+  <details id="look"><summary>Aparência</summary>
+    <label>Tema <select id="theme"><option value="0">Branco no escuro</option><option value="1">Amarelo no escuro</option><option value="2">Preto no branco</option><option value="3">Verde no escuro</option><option value="x">Personalizado</option></select></label>
+    <label>Texto <input type="color" id="cfg" value="#ffffff"></label>
+    <label>Fundo <input type="color" id="cbg" value="#000000"></label>
+    <label>Destaque <input type="color" id="chl" value="#ffd23f"></label>
+    <label>Entrelinha <input id="clh" type="range" min="1.1" max="2.2" step="0.05" value="1.35"></label>
+    <label>Margens <input id="cmx" type="range" min="0" max="60" value="20"></label>
+    <label>Linha de leitura <input type="checkbox" id="crl"></label>
+    <label>Fonte para dislexia <input type="checkbox" id="cdys"></label>
+  </details>
   <button class="main" id="open">Abrir câmera</button>
 </div>
 
 <div id="run">
   <video id="cam" playsinline muted autoplay></video>
-  <div id="ov"><div id="txt"></div></div>
+  <div id="ov"><div id="rl"></div><div id="txt"></div></div>
   <div id="count"></div>
   <div id="msg"></div>
   <div id="bar">
@@ -116,6 +128,32 @@ function saveCur() {
   cur.at = Date.now(); persist();
 }
 $('new').onclick = () => { const s = { id: Date.now(), title: '', text: '', at: Date.now() }; scripts.push(s); persist(); editScript(s.id); $('title').focus(); };
+const themes = [['#ffffff', '#000000', '#ffd23f'], ['#ffe14d', '#000000', '#ffffff'], ['#000000', '#ffffff', '#c00000'], ['#7CFC00', '#000000', '#ffffff']];
+let look = { t: 0, fg: '#ffffff', bg: '#000000', hl: '#ffd23f', lh: 1.35, mx: 20, rl: false, dys: false };
+try { Object.assign(look, JSON.parse(store('tp.look'))); } catch {}
+let dysFont = null;
+function applyLook() {
+  const r = document.documentElement.style;
+  r.setProperty('--fg', look.fg); r.setProperty('--bg', look.bg); r.setProperty('--hl', look.hl);
+  r.setProperty('--lh', look.lh); r.setProperty('--mx', look.mx + 'px');
+  $('rl').style.display = look.rl ? 'block' : 'none';
+  if (look.dys && !dysFont) {
+    dysFont = new FontFace('OpenDyslexic', 'url(https://cdn.jsdelivr.net/npm/@fontsource/opendyslexic@5.2.5/files/opendyslexic-latin-700-normal.woff2)', { weight: '400 700' });
+    dysFont.load().then(f => document.fonts.add(f)).catch(() => { dysFont = null; });
+  }
+  r.setProperty('--ff', (look.dys ? "'OpenDyslexic'," : '') + 'system-ui,-apple-system,sans-serif');
+  $('theme').value = look.t; $('cfg').value = look.fg; $('cbg').value = look.bg; $('chl').value = look.hl;
+  $('clh').value = look.lh; $('cmx').value = look.mx; $('crl').checked = look.rl; $('cdys').checked = look.dys;
+  store('tp.look', JSON.stringify(look));
+}
+$('theme').onchange = () => { const t = $('theme').value; if (t !== 'x') { [look.fg, look.bg, look.hl] = themes[t]; look.t = +t; applyLook(); } };
+[['cfg', 'fg'], ['cbg', 'bg'], ['chl', 'hl']].forEach(([id, k]) => $(id).oninput = () => { look[k] = $(id).value; look.t = 'x'; applyLook(); });
+$('clh').oninput = () => { look.lh = +$('clh').value; applyLook(); };
+$('cmx').oninput = () => { look.mx = +$('cmx').value; applyLook(); };
+$('crl').onchange = () => { look.rl = $('crl').checked; applyLook(); };
+$('cdys').onchange = () => { look.dys = $('cdys').checked; applyLook(); };
+applyLook();
+
 const utf8 = b => new TextDecoder().decode(b);
 
 async function zipEntry(buf, name) {
@@ -193,7 +231,7 @@ $('dur').value = store('tp.dur') || '2:00';
 $('wpm').value = store('tp.wpm') || 140;
 
 let stream, recorder, chunks = [], file;
-let dur = 120, wpm = 140, y = 0, speed = 60, running = false, last = 0, words = [], idx = 0, rec = null, wake = null;
+let padTop = 0, dur = 120, wpm = 140, y = 0, speed = 60, running = false, last = 0, words = [], idx = 0, rec = null, wake = null;
 
 const norm = s => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]/g, '');
 const say = t => $('msg').textContent = t || '';
@@ -229,6 +267,7 @@ function buildText() {
     words.push({ el: s, n: norm(tok) });
   });
   y = 0; idx = 0;
+  padTop = parseFloat(getComputedStyle(el).paddingTop);
   el.style.transform = 'translateY(0)';
 }
 
@@ -242,7 +281,7 @@ function frame(t) {
   else if (m === 'time') y += max / dur * dt;
   else if (m === 'wpm') y += wpm / 60 * max / Math.max(1, words.length) * dt;
   else if (words[idx]) {
-    const target = words[idx].el.offsetTop - innerHeight * 0.06;
+    const target = words[idx].el.offsetTop - padTop;
     y += (target - y) * Math.min(1, dt * 4);
   }
   y = Math.max(0, Math.min(y, max));
