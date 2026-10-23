@@ -14,6 +14,13 @@
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;height:100%;background:#000;color:#fff;font-family:system-ui,-apple-system,sans-serif}
 #setup{display:flex;flex-direction:column;gap:14px;padding:max(16px,env(safe-area-inset-top)) 16px 16px;height:100dvh}
+#list{display:flex;flex-direction:column;gap:10px;padding:max(16px,env(safe-area-inset-top)) 16px 16px;height:100dvh}
+#items{flex:1;min-height:0;overflow:auto;display:flex;flex-direction:column;gap:8px}
+.item{text-align:left;background:#111;border:1px solid #333;border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:4px}
+.item b{font-size:17px}.item small{color:#999}
+#empty{color:#999;text-align:center;margin-top:30px}
+#head{display:flex;gap:8px}
+#title{flex:1;min-width:0;background:#111;color:#fff;border:1px solid #333;border-radius:12px;padding:10px 12px;font-size:17px;font-weight:600}
 #script{flex:1;min-height:0;width:100%;background:#111;color:#fff;border:1px solid #333;border-radius:12px;padding:12px;font-size:18px;resize:none}
 label{display:flex;justify-content:space-between;align-items:center;gap:12px;font-size:15px}
 input[type=range]{flex:1}
@@ -34,7 +41,17 @@ button.main{background:#d22;border-color:#d22;font-weight:600;font-size:18px}
 </style>
 </head>
 <body>
-<div id="setup">
+<div id="list">
+  <button class="main" id="new">+ Novo roteiro</button>
+  <div id="items"></div>
+</div>
+
+<div id="setup" style="display:none">
+  <div id="head">
+    <button id="toList">‹</button>
+    <input id="title" placeholder="Título do roteiro">
+    <button id="del">🗑</button>
+  </div>
   <textarea id="script" placeholder="Cole ou escreva o roteiro aqui"></textarea>
   <label>Modo
     <select id="mode"><option value="speed">Velocidade</option><option value="speech">Acompanhar minha fala</option></select>
@@ -63,7 +80,40 @@ button.main{background:#d22;border-color:#d22;font-weight:600;font-size:18px}
 const $ = id => document.getElementById(id);
 const store = (k, v) => { try { return v === undefined ? localStorage.getItem(k) : localStorage.setItem(k, v); } catch { return null; } };
 
-$('script').value = store('tp.script') || '';
+let scripts = [], cur = null;
+try { scripts = JSON.parse(store('tp.scripts')) || []; } catch {}
+if (!scripts.length && store('tp.script')) scripts.push({ id: Date.now(), title: 'Meu roteiro', text: store('tp.script'), at: Date.now() });
+const persist = () => store('tp.scripts', JSON.stringify(scripts));
+const wordCount = t => (t.trim().match(/\S+/g) || []).length;
+
+function showList() {
+  cur = null;
+  $('setup').style.display = 'none'; $('list').style.display = 'flex';
+  const box = $('items'); box.textContent = '';
+  if (!scripts.length) { const e = document.createElement('div'); e.id = 'empty'; e.textContent = 'Nenhum roteiro ainda. Toque em "Novo roteiro".'; box.append(e); }
+  [...scripts].sort((a, b) => b.at - a.at).forEach(s => {
+    const b = document.createElement('button'); b.className = 'item';
+    const t = document.createElement('b'); t.textContent = s.title || 'Sem título';
+    const m = document.createElement('small'); m.textContent = `${wordCount(s.text)} palavras · ${new Date(s.at).toLocaleDateString('pt-BR')}`;
+    b.append(t, m); b.onclick = () => editScript(s.id); box.append(b);
+  });
+}
+function editScript(id) {
+  cur = scripts.find(s => s.id === id);
+  $('title').value = cur.title; $('script').value = cur.text;
+  $('list').style.display = 'none'; $('setup').style.display = 'flex';
+}
+function saveCur() {
+  if (!cur) return;
+  cur.text = $('script').value;
+  cur.title = $('title').value.trim() || cur.text.trim().split('\n')[0].slice(0, 40) || 'Sem título';
+  cur.at = Date.now(); persist();
+}
+$('new').onclick = () => { const s = { id: Date.now(), title: '', text: '', at: Date.now() }; scripts.push(s); persist(); editScript(s.id); $('title').focus(); };
+$('toList').onclick = () => { saveCur(); showList(); };
+$('script').oninput = $('title').oninput = saveCur;
+$('del').onclick = () => { if (confirm('Excluir este roteiro?')) { scripts = scripts.filter(s => s !== cur); persist(); showList(); } };
+
 $('fs').value = store('tp.fs') || 36;
 $('sp').value = store('tp.sp') || 60;
 $('mode').value = store('tp.mode') || 'speed';
@@ -156,7 +206,7 @@ function startSpeech() {
 function stopSpeech() { const r = rec; rec = null; if (r) try { r.stop(); } catch {} }
 
 async function openCam() {
-  store('tp.script', $('script').value); store('tp.mode', $('mode').value); store('tp.sp', $('sp').value);
+  saveCur(); store('tp.mode', $('mode').value); store('tp.sp', $('sp').value);
   speed = +$('sp').value; setFs(+$('fs').value);
   try {
     stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: true });
@@ -212,6 +262,7 @@ async function save() {
   const a = document.createElement('a'); a.href = URL.createObjectURL(file); a.download = file.name; a.click();
 }
 
+showList();
 $('open').onclick = openCam;
 $('back').onclick = closeCam;
 $('try').onclick = () => begin(false);
