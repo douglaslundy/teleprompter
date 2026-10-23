@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Teleprompter">
@@ -14,26 +14,31 @@
 :root{--fs:36px;--fg:#ffffff;--bg:#000000;--hl:#ffd23f;--lh:1.35;--mx:20px;--ff:system-ui,-apple-system,sans-serif;color-scheme:dark}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;height:100%;background:#000;color:#fff;font-family:system-ui,-apple-system,sans-serif}
-#setup{display:flex;flex-direction:column;gap:14px;padding:max(16px,env(safe-area-inset-top)) 16px 16px;height:100dvh}
-#list,#recs{display:flex;flex-direction:column;gap:10px;padding:max(16px,env(safe-area-inset-top)) 16px 16px;height:100dvh}
+#setup{display:flex;flex-direction:column;gap:14px;overflow-y:auto}
+#list,#recs{display:flex;flex-direction:column;gap:10px}
+/* telas de lista/edicao: coluna centrada (monitor) e respeito a notch/barra do iPhone (retrato e paisagem) */
+#setup,#list,#recs{width:100%;max-width:760px;margin-inline:auto;height:100dvh;padding:max(16px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(16px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left))}
 #items,#recItems{flex:1;min-height:0;overflow:auto;display:flex;flex-direction:column;gap:8px}
 .item{text-align:left;background:#111;border:1px solid #333;border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:4px}
 .item b{font-size:17px}.item video{width:100%;border-radius:8px;background:#000;max-height:50dvh}.acts{display:flex;gap:8px;margin-top:6px}.acts button{flex:1;padding:8px}.item small{color:#999}
 #est{color:#999;font-size:14px;text-align:center}
 #empty{color:#999;text-align:center;margin-top:30px}
-.head{display:flex;gap:8px}
+.head{display:flex;gap:8px;flex-wrap:wrap}
 #title{flex:1;min-width:0;background:#111;color:#fff;border:1px solid #333;border-radius:12px;padding:10px 12px;font-size:17px;font-weight:600}
-#script{flex:1;min-height:0;width:100%;background:#111;color:#fff;border:1px solid #333;border-radius:12px;padding:12px;font-size:18px;resize:none}
+#script{flex:1;min-height:140px;width:100%;background:#111;color:#fff;border:1px solid #333;border-radius:12px;padding:12px;font-size:18px;resize:none}
 label{display:flex;justify-content:space-between;align-items:center;gap:12px;font-size:15px}
 input[type=range]{flex:1}
-select,button{font:inherit;color:#fff;background:#222;border:1px solid #444;border-radius:12px;padding:12px 16px}
+input[type=color]{min-width:56px;min-height:40px}
+#toList,#recsBack{min-width:44px}
+select,button{min-height:44px;font:inherit;color:#fff;background:#222;border:1px solid #444;border-radius:12px;padding:12px 16px}
+input,select,textarea{font-size:16px} /* menos de 16px faz o iOS dar zoom ao focar */
 button.main{background:#d22;border-color:#d22;font-weight:600;font-size:18px}
 #run{touch-action:none;display:none;position:fixed;inset:0;background:#000}
 #cam{position:absolute;left:0;top:0;width:100%;height:100%;object-fit:fill;background:#000}
-#ov{position:absolute;left:0;right:0;top:44dvh;height:52dvh;overflow:hidden;pointer-events:none;
+#ov{position:absolute;left:0;right:0;top:44dvh;height:42dvh;overflow:hidden;pointer-events:none;
   background:linear-gradient(color-mix(in srgb,var(--bg) 70%,transparent) 80%,transparent)}
 #rl{position:absolute;left:0;right:0;top:6dvh;height:calc(var(--fs)*var(--lh));background:rgba(255,255,255,.14);border-block:1px solid rgba(255,255,255,.4);display:none}
-#txt{position:relative;padding:6dvh var(--mx) 60dvh;font-size:var(--fs);line-height:var(--lh);font-weight:600;color:var(--fg);font-family:var(--ff);will-change:transform}
+#txt{position:relative;max-width:1100px;margin-inline:auto;padding:6dvh var(--mx) 60dvh;font-size:var(--fs);line-height:var(--lh);font-weight:600;color:var(--fg);font-family:var(--ff);will-change:transform}
 #txt span.on{color:var(--hl)}
 #txt span.em{text-decoration:underline;text-underline-offset:.15em;font-weight:800}
 #look{font-size:15px}#look summary{padding:6px 0;color:#bbb}#look label{margin:8px 0}#look input[type=color]{width:48px;height:32px;padding:0;border:0;background:none}
