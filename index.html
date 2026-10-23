@@ -28,7 +28,7 @@ input[type=range]{flex:1}
 select,button{font:inherit;color:#fff;background:#222;border:1px solid #444;border-radius:12px;padding:12px 16px}
 button.main{background:#d22;border-color:#d22;font-weight:600;font-size:18px}
 #run{display:none;position:fixed;inset:0;background:#000}
-#cam{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:scaleX(-1)}
+#cam{position:absolute;left:0;top:0;width:100%;height:100%;object-fit:fill;background:#000}
 #ov{position:absolute;left:0;right:0;top:0;height:52dvh;overflow:hidden;pointer-events:none;
   background:linear-gradient(color-mix(in srgb,var(--bg) 70%,transparent) 80%,transparent)}
 #rl{position:absolute;left:0;right:0;top:calc(env(safe-area-inset-top) + 6dvh);height:calc(var(--fs)*var(--lh));background:rgba(255,255,255,.14);border-block:1px solid rgba(255,255,255,.4);display:none}
@@ -65,6 +65,11 @@ button.main{background:#d22;border-color:#d22;font-weight:600;font-size:18px}
   <label id="rowDur">Duração (mm:ss) <input id="dur" value="2:00" inputmode="numeric" size="6"></label>
   <label id="rowWpm">Palavras/min <input id="wpm" type="number" min="40" max="400" value="140"></label>
   <div id="est"></div>
+  <details id="camset"><summary>Câmera</summary>
+    <label>Câmera <select id="ccam"><option value="user">Frontal</option><option value="environment">Traseira</option></select></label>
+    <label>Resolução <select id="cres"><option value="720">720p</option><option value="1080">1080p</option><option value="2160">4K</option></select></label>
+    <label>Proporção <select id="casp"><option value="9:16">9:16 vertical</option><option value="16:9">16:9 horizontal</option><option value="1:1">1:1 quadrado</option></select></label>
+  </details>
   <details id="look"><summary>Aparência</summary>
     <label>Tema <select id="theme"><option value="0">Branco no escuro</option><option value="1">Amarelo no escuro</option><option value="2">Preto no branco</option><option value="3">Verde no escuro</option><option value="x">Personalizado</option></select></label>
     <label>Texto <input type="color" id="cfg" value="#ffffff"></label>
@@ -87,6 +92,7 @@ button.main{background:#d22;border-color:#d22;font-weight:600;font-size:18px}
   <div id="msg"></div>
   <div id="bar">
     <button id="back">✕</button>
+    <button id="flip">⟲</button>
     <button id="fsm">A−</button><button id="fsp">A+</button>
     <button id="spm">−</button><button id="spp">+</button>
     <button id="pause">⏸</button>
@@ -341,21 +347,44 @@ function startSpeech() {
 }
 function stopSpeech() { const r = rec; rec = null; if (r) try { r.stop(); } catch {} }
 
+const camCfg = { f: 'user', r: '1080', a: '9:16' };
+try { Object.assign(camCfg, JSON.parse(store('tp.cam'))); } catch {}
+$('ccam').value = camCfg.f; $('cres').value = camCfg.r; $('casp').value = camCfg.a;
+
+async function startStream() {
+  stream?.getTracks().forEach(t => t.stop());
+  const [aw, ah] = $('casp').value.split(':').map(Number), sh = +$('cres').value, lg = Math.round(sh * 16 / 9);
+  const w = aw === ah ? sh : aw > ah ? lg : sh, h = aw === ah ? sh : aw > ah ? sh : lg;
+  const f = $('ccam').value;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: f }, width: { ideal: w }, height: { ideal: h }, aspectRatio: { ideal: aw / ah } }, audio: true });
+  } catch (e) { alert('Sem acesso à câmera/microfone: ' + e.message); return false; }
+  const v = $('cam');
+  v.style.transform = f === 'user' ? 'scaleX(-1)' : 'none';
+  v.onloadedmetadata = () => { fitCam(); say(`Câmera ${v.videoWidth}×${v.videoHeight}` + (Math.min(v.videoWidth, v.videoHeight) < sh ? ' (menor que o pedido)' : '')); };
+  v.srcObject = stream;
+  return true;
+}
+
+// Mostra a prévia na proporção real entregue pela câmera, para o enquadramento bater com o arquivo gravado.
+function fitCam() {
+  const v = $('cam'), r = v.videoWidth / v.videoHeight;
+  if (!r) return;
+  const bw = innerWidth, bh = innerHeight, w = Math.min(bw, bh * r), h = w / r;
+  Object.assign(v.style, { width: w + 'px', height: h + 'px', left: (bw - w) / 2 + 'px', top: (bh - h) / 2 + 'px' });
+}
+addEventListener('resize', fitCam);
+
 async function openCam() {
   saveCur(); store('tp.mode', $('mode').value); store('tp.sp', $('sp').value);
   dur = parseDur($('dur').value); $('dur').value = fmtDur(dur); store('tp.dur', $('dur').value);
   wpm = Math.max(40, Math.min(400, +$('wpm').value || 140)); store('tp.wpm', wpm);
-  dur = parseDur($('dur').value); $('dur').value = fmtDur(dur); store('tp.dur', $('dur').value);
-  wpm = Math.max(40, Math.min(400, +$('wpm').value || 140)); store('tp.wpm', wpm);
   speed = +$('sp').value; setFs(+$('fs').value);
-  try {
-    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: true });
-  } catch (e) { return alert('Sem acesso à câmera/microfone: ' + e.message); }
-  $('cam').srcObject = stream;
+  store('tp.cam', JSON.stringify({ f: $('ccam').value, r: $('cres').value, a: $('casp').value }));
+  if (!await startStream()) return;
   buildText();
   $('setup').style.display = 'none'; $('run').style.display = 'block';
   $('try').style.display = $('rec').style.display = '';
-  say('');
 }
 
 function closeCam() {
@@ -405,6 +434,12 @@ async function save() {
 showList();
 $('open').onclick = openCam;
 $('back').onclick = closeCam;
+$('flip').onclick = async () => {
+  if ($('rec').dataset.state === 'stop') return;
+  $('ccam').value = $('ccam').value === 'user' ? 'environment' : 'user';
+  store('tp.cam', JSON.stringify({ f: $('ccam').value, r: $('cres').value, a: $('casp').value }));
+  await startStream();
+};
 $('try').onclick = () => begin(false);
 $('rec').onclick = () => {
   const s = $('rec').dataset.state;
