@@ -27,7 +27,7 @@ label{display:flex;justify-content:space-between;align-items:center;gap:12px;fon
 input[type=range]{flex:1}
 select,button{font:inherit;color:#fff;background:#222;border:1px solid #444;border-radius:12px;padding:12px 16px}
 button.main{background:#d22;border-color:#d22;font-weight:600;font-size:18px}
-#run{display:none;position:fixed;inset:0;background:#000}
+#run{touch-action:none;display:none;position:fixed;inset:0;background:#000}
 #cam{position:absolute;left:0;top:0;width:100%;height:100%;object-fit:fill;background:#000}
 #ov{position:absolute;left:0;right:0;top:0;height:52dvh;overflow:hidden;pointer-events:none;
   background:linear-gradient(color-mix(in srgb,var(--bg) 70%,transparent) 80%,transparent)}
@@ -245,7 +245,7 @@ $('wpm').value = store('tp.wpm') || 140;
 $('sens').value = store('tp.sens') || 1;
 
 let stream, recorder, chunks = [], file;
-let barriers = [], lastHeard = 0, fb = false, padTop = 0, dur = 120, wpm = 140, y = 0, speed = 60, running = false, last = 0, words = [], idx = 0, rec = null, wake = null;
+let drag = false, barriers = [], lastHeard = 0, fb = false, padTop = 0, dur = 120, wpm = 140, y = 0, speed = 60, running = false, last = 0, words = [], idx = 0, rec = null, wake = null;
 
 const norm = s => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]/g, '');
 const say = t => $('msg').textContent = t || '';
@@ -291,14 +291,53 @@ function buildText() {
   el.style.transform = 'translateY(0)';
 }
 
+const maxY = () => $('txt').scrollHeight - $('ov').clientHeight * 0.6;
+
+// Gestos na área do texto: toque pausa/retoma, arrastar move o texto, pinça muda a letra.
+(() => {
+  const run = $('run');
+  let g = null;
+  const dist = e => Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+  run.addEventListener('touchstart', e => {
+    if (e.target.closest('#bar')) return;
+    if (e.touches.length === 2) g = { pinch: true, d: dist(e), fs: +$('fs').value };
+    else if (e.touches.length === 1) g = { y: e.touches[0].clientY, t: Date.now(), moved: false };
+  }, { passive: true });
+  run.addEventListener('touchmove', e => {
+    if (!g) return;
+    if (g.pinch) { if (e.touches.length === 2) { setFs(Math.round(g.fs * dist(e) / g.d)); say('Letra ' + $('fs').value); } return; }
+    const dy = e.touches[0].clientY - g.y;
+    if (!g.moved && Math.abs(dy) < 8) return;
+    g.moved = drag = true; g.y = e.touches[0].clientY;
+    y = Math.max(0, Math.min(y - dy, maxY()));
+    $('txt').style.transform = `translateY(${-y}px)`;
+  }, { passive: true });
+  run.addEventListener('touchend', e => {
+    if (!g) return;
+    const x = g;
+    if (e.touches.length) return;
+    g = null;
+    if (x.pinch) return;
+    if (x.moved) {
+      drag = false;
+      while (idx > 0 && words[idx].el.offsetTop - padTop > y) setIdx(idx - 1);
+      while (idx < words.length - 1 && words[idx].el.offsetTop - padTop < y) setIdx(idx + 1);
+      lastHeard = performance.now();
+    } else if (Date.now() - x.t < 400) {
+      $('pause').onclick(); say(running ? 'Rolando' : 'Pausado');
+    }
+  });
+})();
+
 function frame(t) {
   if (!running) return;
   const dt = Math.min(0.1, (t - last) / 1000);
   last = t;
-  const max = $('txt').scrollHeight - $('ov').clientHeight * 0.6;
+  const max = maxY();
   const m = $('mode').value;
   if (m === 'speech' && !fb && t - lastHeard > 8000) { fb = true; say('Sem voz reconhecida: rolando por velocidade'); }
-  if (m === 'speed') y += speed * dt;
+  if (drag) {}
+  else if (m === 'speed') y += speed * dt;
   else if (m === 'time') y += max / dur * dt;
   else if (m === 'wpm') y += wpm / 60 * max / Math.max(1, words.length) * dt;
   else if (fb) {
