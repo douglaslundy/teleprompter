@@ -72,6 +72,8 @@ button.main{background:#d22;border-color:#d22;font-weight:600;font-size:18px}
     <label>Destaque <input type="color" id="chl" value="#ffd23f"></label>
     <label>Entrelinha <input id="clh" type="range" min="1.1" max="2.2" step="0.05" value="1.35"></label>
     <label>Margens <input id="cmx" type="range" min="0" max="60" value="20"></label>
+    <label>Espelhar horizontal <input type="checkbox" id="cmh"></label>
+    <label>Espelhar vertical <input type="checkbox" id="cmv"></label>
     <label>Linha de leitura <input type="checkbox" id="crl"></label>
     <label>Fonte para dislexia <input type="checkbox" id="cdys"></label>
   </details>
@@ -129,13 +131,14 @@ function saveCur() {
 }
 $('new').onclick = () => { const s = { id: Date.now(), title: '', text: '', at: Date.now() }; scripts.push(s); persist(); editScript(s.id); $('title').focus(); };
 const themes = [['#ffffff', '#000000', '#ffd23f'], ['#ffe14d', '#000000', '#ffffff'], ['#000000', '#ffffff', '#c00000'], ['#7CFC00', '#000000', '#ffffff']];
-let look = { t: 0, fg: '#ffffff', bg: '#000000', hl: '#ffd23f', lh: 1.35, mx: 20, rl: false, dys: false };
+let look = { t: 0, fg: '#ffffff', bg: '#000000', hl: '#ffd23f', lh: 1.35, mx: 20, rl: false, dys: false, mh: false, mv: false };
 try { Object.assign(look, JSON.parse(store('tp.look'))); } catch {}
 let dysFont = null;
 function applyLook() {
   const r = document.documentElement.style;
   r.setProperty('--fg', look.fg); r.setProperty('--bg', look.bg); r.setProperty('--hl', look.hl);
   r.setProperty('--lh', look.lh); r.setProperty('--mx', look.mx + 'px');
+  $('ov').style.transform = `scale(${look.mh ? -1 : 1},${look.mv ? -1 : 1})`;
   $('rl').style.display = look.rl ? 'block' : 'none';
   if (look.dys && !dysFont) {
     dysFont = new FontFace('OpenDyslexic', 'url(https://cdn.jsdelivr.net/npm/@fontsource/opendyslexic@5.2.5/files/opendyslexic-latin-700-normal.woff2)', { weight: '400 700' });
@@ -143,13 +146,15 @@ function applyLook() {
   }
   r.setProperty('--ff', (look.dys ? "'OpenDyslexic'," : '') + 'system-ui,-apple-system,sans-serif');
   $('theme').value = look.t; $('cfg').value = look.fg; $('cbg').value = look.bg; $('chl').value = look.hl;
-  $('clh').value = look.lh; $('cmx').value = look.mx; $('crl').checked = look.rl; $('cdys').checked = look.dys;
+  $('clh').value = look.lh; $('cmx').value = look.mx; $('cmh').checked = look.mh; $('cmv').checked = look.mv; $('crl').checked = look.rl; $('cdys').checked = look.dys;
   store('tp.look', JSON.stringify(look));
 }
 $('theme').onchange = () => { const t = $('theme').value; if (t !== 'x') { [look.fg, look.bg, look.hl] = themes[t]; look.t = +t; applyLook(); } };
 [['cfg', 'fg'], ['cbg', 'bg'], ['chl', 'hl']].forEach(([id, k]) => $(id).oninput = () => { look[k] = $(id).value; look.t = 'x'; applyLook(); });
 $('clh').oninput = () => { look.lh = +$('clh').value; applyLook(); };
 $('cmx').oninput = () => { look.mx = +$('cmx').value; applyLook(); };
+$('cmh').onchange = () => { look.mh = $('cmh').checked; applyLook(); };
+$('cmv').onchange = () => { look.mv = $('cmv').checked; applyLook(); };
 $('crl').onchange = () => { look.rl = $('crl').checked; applyLook(); };
 $('cdys').onchange = () => { look.dys = $('cdys').checked; applyLook(); };
 applyLook();
