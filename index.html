@@ -100,6 +100,10 @@ button.main{background:#d22;border-color:#d22;font-weight:600;font-size:18px}
     <label><span data-i18n="mic">Microfone</span> <select id="cmic"></select></label>
     <label><span data-i18n="noise">Reduzir ruído</span> <input type="checkbox" id="cnoise" checked></label>
     <label><span data-i18n="echo">Cancelar eco</span> <input type="checkbox" id="cecho" checked></label>
+    <label><span data-i18n="vb">Fundo do vídeo</span> <select id="cvbg"><option value="none" data-i18n="vbNone">Nenhum</option><option value="blur" data-i18n="vbBlur">Desfocar</option><option value="color" data-i18n="vbColor">Cor sólida</option><option value="img" data-i18n="vbImg">Minha foto</option>
+      <option value="s:library" data-i18n="vbLib">Biblioteca</option><option value="s:office" data-i18n="vbOff">Escritório</option><option value="s:mansion" data-i18n="vbMan">Mansão de luxo</option><option value="s:beach" data-i18n="vbBeach">Casa na praia (janela e estante)</option><option value="s:home" data-i18n="vbHome">Home office com estante</option><option value="s:loft" data-i18n="vbLoft">Loft industrial</option><option value="s:grad" data-i18n="vbGrad">Degradê</option></select></label>
+    <label id="cvcL" hidden><span data-i18n="vbColor">Cor sólida</span> <input type="color" id="cvc" value="#1e3a5f"></label>
+    <label id="cvfL" hidden><span data-i18n="vbUp">Escolher foto</span> <input type="file" id="cvf" accept="image/*"></label>
   </details>
   <details id="look"><summary data-i18n="look">Aparência</summary>
     <label><span data-i18n="theme">Tema</span> <select id="theme"><option value="0" data-i18n="th0">Branco no escuro</option><option value="1" data-i18n="th1">Amarelo no escuro</option><option value="2" data-i18n="th2">Preto no branco</option><option value="3" data-i18n="th3">Verde no escuro</option><option value="x" data-i18n="thX">Personalizado</option></select></label>
@@ -151,7 +155,7 @@ const LANGS = {
 No outro celular ou PC abra:
 ${u}/remote.html
 
-Código: ${c}`, rcOff: 'Controle remoto desligado.', rcFail: 'Não foi possível ligar o controle remoto (API fora do ar?).', rcUrl: 'Endereço da API (ex.: https://api.seudominio.com)', ok: 'OK', cancel: 'Cancelar', delete: 'Excluir', newScript: '+ Novo roteiro', import: 'Importar', untitled: 'Sem título', myScript: 'Meu roteiro',
+Código: ${c}`, rcOff: 'Controle remoto desligado.', rcFail: 'Não foi possível ligar o controle remoto (API fora do ar?).', rcUrl: 'Endereço da API (ex.: https://api.seudominio.com)', ok: 'OK', cancel: 'Cancelar', delete: 'Excluir', vb: 'Fundo do vídeo', vbNone: 'Nenhum', vbBlur: 'Desfocar', vbColor: 'Cor sólida', vbImg: 'Minha foto', vbUp: 'Escolher foto', vbLib: 'Biblioteca', vbOff: 'Escritório', vbMan: 'Mansão de luxo', vbBeach: 'Casa na praia (janela e estante)', vbHome: 'Home office com estante', vbLoft: 'Loft industrial', vbGrad: 'Degradê', vbLoad: 'Carregando fundo virtual…', vbFail: 'Não foi possível carregar o fundo virtual (precisa de internet na primeira vez). Gravando sem fundo.', newScript: '+ Novo roteiro', import: 'Importar', untitled: 'Sem título', myScript: 'Meu roteiro',
     emptyList: 'Nenhum roteiro ainda. Toque em "Novo roteiro".', words: n => `${n} palavras`,
     titlePh: 'Título do roteiro', scriptPh: 'Cole ou escreva o roteiro aqui',
     mode: 'Modo', mSpeed: 'Velocidade', mTime: 'Tempo fixo', mWpm: 'Palavras por minuto', mSpeech: 'Acompanhar minha fala',
@@ -179,7 +183,7 @@ Código: ${c}`, rcOff: 'Controle remoto desligado.', rcFail: 'Não foi possível
 On the other phone or PC open:
 ${u}/remote.html
 
-Code: ${c}`, rcOff: 'Remote control off.', rcFail: 'Could not start the remote control (API down?).', rcUrl: 'API address (e.g. https://api.yourdomain.com)', ok: 'OK', cancel: 'Cancel', delete: 'Delete', newScript: '+ New script', import: 'Import', untitled: 'Untitled', myScript: 'My script',
+Code: ${c}`, rcOff: 'Remote control off.', rcFail: 'Could not start the remote control (API down?).', rcUrl: 'API address (e.g. https://api.yourdomain.com)', ok: 'OK', cancel: 'Cancel', delete: 'Delete', vb: 'Video background', vbNone: 'None', vbBlur: 'Blur', vbColor: 'Solid color', vbImg: 'My photo', vbUp: 'Choose photo', vbLib: 'Library', vbOff: 'Office', vbMan: 'Luxury mansion', vbBeach: 'Beach house (window and bookshelf)', vbHome: 'Home office with bookshelf', vbLoft: 'Industrial loft', vbGrad: 'Gradient', vbLoad: 'Loading virtual background…', vbFail: 'Could not load the virtual background (needs internet the first time). Recording without it.', newScript: '+ New script', import: 'Import', untitled: 'Untitled', myScript: 'My script',
     emptyList: 'No scripts yet. Tap "New script".', words: n => `${n} words`,
     titlePh: 'Script title', scriptPh: 'Paste or write your script here',
     mode: 'Mode', mSpeed: 'Speed', mTime: 'Fixed time', mWpm: 'Words per minute', mSpeech: 'Follow my speech',
@@ -207,7 +211,7 @@ Code: ${c}`, rcOff: 'Remote control off.', rcFail: 'Could not start the remote c
 En el otro móvil o PC abre:
 ${u}/remote.html
 
-Código: ${c}`, rcOff: 'Control remoto desactivado.', rcFail: 'No se pudo activar el control remoto (¿API caída?).', rcUrl: 'Dirección de la API (ej.: https://api.tudominio.com)', ok: 'OK', cancel: 'Cancelar', delete: 'Eliminar', newScript: '+ Nuevo guion', import: 'Importar', untitled: 'Sin título', myScript: 'Mi guion',
+Código: ${c}`, rcOff: 'Control remoto desactivado.', rcFail: 'No se pudo activar el control remoto (¿API caída?).', rcUrl: 'Dirección de la API (ej.: https://api.tudominio.com)', ok: 'OK', cancel: 'Cancelar', delete: 'Eliminar', vb: 'Fondo del vídeo', vbNone: 'Ninguno', vbBlur: 'Desenfocar', vbColor: 'Color sólido', vbImg: 'Mi foto', vbUp: 'Elegir foto', vbLib: 'Biblioteca', vbOff: 'Oficina', vbMan: 'Mansión de lujo', vbBeach: 'Casa en la playa (ventana y estantería)', vbHome: 'Home office con estantería', vbLoft: 'Loft industrial', vbGrad: 'Degradado', vbLoad: 'Cargando fondo virtual…', vbFail: 'No se pudo cargar el fondo virtual (necesita internet la primera vez). Grabando sin fondo.', newScript: '+ Nuevo guion', import: 'Importar', untitled: 'Sin título', myScript: 'Mi guion',
     emptyList: 'Aún no hay guiones. Toca "Nuevo guion".', words: n => `${n} palabras`,
     titlePh: 'Título del guion', scriptPh: 'Pega o escribe el guion aquí',
     mode: 'Modo', mSpeed: 'Velocidad', mTime: 'Tiempo fijo', mWpm: 'Palabras por minuto', mSpeech: 'Seguir mi voz',
@@ -791,6 +795,7 @@ async function listMics() {
 listMics();
 
 async function startStream() {
+  vbStop();
   stream?.getTracks().forEach(t => t.stop());
   const [aw, ah] = $('casp').value.split(':').map(Number), sh = +$('cres').value, lg = Math.round(sh * 16 / 9);
   const w = aw === ah ? sh : aw > ah ? lg : sh, h = aw === ah ? sh : aw > ah ? sh : lg;
@@ -801,7 +806,7 @@ async function startStream() {
   } catch (e) { uiAlert(tr('camDenied', e.message)); return false; }
   const v = $('cam');
   v.style.transform = f === 'user' ? 'scaleX(-1)' : 'none';
-  v.onloadedmetadata = () => { fitCam(); say(tr('camSize', v.videoWidth, v.videoHeight, Math.min(v.videoWidth, v.videoHeight) < sh)); };
+  v.onloadedmetadata = () => { fitCam(); vbStart(); say(tr('camSize', v.videoWidth, v.videoHeight, Math.min(v.videoWidth, v.videoHeight) < sh)); };
   v.srcObject = stream;
   return true;
 }
@@ -812,8 +817,116 @@ function fitCam() {
   if (!r) return;
   const bw = innerWidth, bh = innerHeight, w = Math.min(bw, bh * r), h = w / r;
   Object.assign(v.style, { width: w + 'px', height: h + 'px', left: (bw - w) / 2 + 'px', top: (bh - h) / 2 + 'px' });
+  if (VB.cv) Object.assign(VB.cv.style, { width: v.style.width, height: v.style.height, left: v.style.left, top: v.style.top, transform: v.style.transform });
 }
 addEventListener('resize', fitCam);
+
+// ---- Fundo virtual: MediaPipe separa a pessoa; o canvas compoe fundo + pessoa e e ele que vai para o MediaRecorder ----
+const MP = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14';
+const MODEL = 'https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_segmenter/float16/latest/selfie_segmenter.tflite';
+const VB = { seg: null, on: false, cv: null, out: null, t: 0, starting: null };
+const vbCfg = { m: 'none', c: '#1e3a5f' };
+try { Object.assign(vbCfg, JSON.parse(store('tp.vbg'))); } catch {}
+const saveVb = () => store('tp.vbg', JSON.stringify(vbCfg));
+
+function vbSeg() {
+  return VB.seg ||= (async () => {
+    const { ImageSegmenter, FilesetResolver } = await import(MP + '/vision_bundle.mjs');
+    const fs = await FilesetResolver.forVisionTasks(MP + '/wasm');
+    const mk = delegate => ImageSegmenter.createFromOptions(fs, { baseOptions: { modelAssetPath: MODEL, delegate }, runningMode: 'VIDEO', outputConfidenceMasks: true, outputCategoryMask: false });
+    try { return await mk('GPU'); } catch { return await mk('CPU'); }
+  })().catch(e => { VB.seg = null; throw e; });
+}
+
+// Cenas desenhadas em SVG (ilustracoes desfocadas, nao fotos); x/y/w/h em fracao da tela para servir em vertical e horizontal.
+function vbScene(name, W, H) {
+  let s = 7; const rnd = () => (s = (s * 16807) % 2147483647) / 2147483647;
+  const r = (x, y, w, h, f, o = '') => `<rect x="${x * W}" y="${y * H}" width="${w * W}" height="${h * H}" fill="${f}" ${o}/>`;
+  const books = (x, y, w, h, n) => { let o = '', bx = x; const pal = ['#8b2e2e', '#2e4a8b', '#2e6b4a', '#c9a227', '#5a3a1e', '#6b2e6b', '#d8cdb4', '#3a3a3a']; for (let i = 0; i < n && bx < x + w - 0.01; i++) { const bw = (0.006 + rnd() * 0.01) * (W > H ? 1 : 2), bh = h * (0.7 + rnd() * 0.3); o += r(bx, y + h - bh, bw, bh, pal[(rnd() * 8) | 0]); bx += bw + 0.001; } return o; };
+  const shelf = (x, y, w, h, rows) => { let o = r(x, y, w, h, '#4a2f1a'); for (let i = 0; i < rows; i++) { const ry = y + (h / rows) * i + 0.01; o += r(x + 0.01, ry, w - 0.02, h / rows - 0.015, '#2b1a0e') + books(x + 0.015, ry, w - 0.03, h / rows - 0.02, 60); } return o; };
+  const lin = (id, a, b) => `<linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${a}"/><stop offset="1" stop-color="${b}"/></linearGradient>`;
+  const defs = lin('g1', '#a9d4f5', '#e8f4fc') + lin('g2', '#3b2a4f', '#1e3a5f') + lin('g3', '#f0e4c8', '#c9b68a') + `<filter id="b"><feGaussianBlur stdDeviation="${W / 220}"/></filter>`;
+  const sc = {
+    library: () => r(0, 0, 1, 1, '#2a1a10') + shelf(0.02, 0.05, 0.3, 0.9, 6) + shelf(0.35, 0.05, 0.3, 0.9, 6) + shelf(0.68, 0.05, 0.3, 0.9, 6) + `<ellipse cx="${W / 2}" cy="${H * 0.2}" rx="${W * 0.4}" ry="${H * 0.25}" fill="#ffcf7a" opacity=".18"/>`,
+    office: () => r(0, 0, 1, 1, '#e4e6ea') + r(0.52, 0.1, 0.42, 0.55, '#6f7782') + r(0.54, 0.12, 0.38, 0.51, 'url(#g1)') + [0, 1, 2, 3, 4].map(i => r(0.55 + i * 0.075, 0.4 - rnd() * 0.15, 0.06, 0.23, '#7f94aa')).join('') + r(0, 0.82, 1, 0.18, '#8a6a4a') + r(0.06, 0.15, 0.18, 0.22, '#fff', 'stroke="#aaa" stroke-width="3"') + r(0.09, 0.19, 0.12, 0.14, '#9bb7d4') + `<ellipse cx="${W * 0.1}" cy="${H * 0.75}" rx="${W * 0.05}" ry="${H * 0.12}" fill="#3f7d4e"/>`,
+    mansion: () => r(0, 0, 1, 1, 'url(#g3)') + [0.12, 0.42, 0.72].map(x => r(x, 0.08, 0.16, 0.6, '#9fc3e0') + `<path d="M${x * W} ${0.08 * H} a${0.08 * W} ${0.08 * W} 0 0 1 ${0.16 * W} 0" fill="#9fc3e0"/>` + r(x - 0.02, 0.05, 0.03, 0.72, '#b8963e') + r(x + 0.15, 0.05, 0.03, 0.72, '#b8963e')).join('') + [0.3, 0.5, 0.7].map(x => `<circle cx="${x * W}" cy="${0.06 * H}" r="${W * 0.014}" fill="#ffd77a"/>`).join('') + [...Array(12)].map((_, i) => [...Array(4)].map((_, j) => r(i / 12, 0.78 + j * 0.055, 1 / 12, 0.055, (i + j) % 2 ? '#f4f1ea' : '#2c2c2c')).join('')).join(''),
+    beach: () => r(0, 0, 1, 1, '#ece4d6') + r(0.04, 0.1, 0.44, 0.64, '#fff') + r(0.06, 0.12, 0.4, 0.6, 'url(#g1)') + r(0.06, 0.4, 0.4, 0.14, '#2f86b8') + r(0.06, 0.54, 0.4, 0.18, '#e6d3a1') + `<circle cx="${W * 0.36}" cy="${H * 0.24}" r="${W * 0.03}" fill="#ffe08a"/>` + r(0.26, 0.12, 0.012, 0.6, '#fff') + r(0.06, 0.42, 0.4, 0.012, '#fff') + shelf(0.56, 0.08, 0.38, 0.74, 5) + r(0, 0.84, 1, 0.16, '#9b7650'),
+    home: () => r(0, 0, 1, 1, '#41594a') + shelf(0.1, 0.1, 0.5, 0.6, 4) + r(0.7, 0.12, 0.2, 0.28, '#e9e2d0') + r(0.72, 0.14, 0.16, 0.24, '#7da0c0') + `<ellipse cx="${W * 0.78}" cy="${H * 0.78}" rx="${W * 0.07}" ry="${H * 0.14}" fill="#2f7a3e"/>` + r(0, 0.88, 1, 0.12, '#7a5a3a'),
+    loft: () => r(0, 0, 1, 1, '#8a4a3a') + [...Array(14)].map((_, i) => [...Array(10)].map((_, j) => r(j / 10 + (i % 2) * 0.05 - 0.05, i / 14, 0.098, 0.068, '#a85a46')).join('')).join('') + r(0.3, 0.1, 0.4, 0.6, '#222') + [0, 1, 2].map(i => [0, 1, 2].map(j => r(0.31 + i * 0.13, 0.11 + j * 0.195, 0.12, 0.185, '#b7d3e8')).join('')).join('') + `<path d="M${W * 0.15} 0 V${H * 0.2}" stroke="#222" stroke-width="3"/><path d="M${W * 0.1} ${H * 0.2} h${W * 0.1} l-${W * 0.02} ${H * 0.06} h-${W * 0.06}z" fill="#222"/>`,
+    grad: () => r(0, 0, 1, 1, 'url(#g2)') + `<circle cx="${W * 0.8}" cy="${H * 0.2}" r="${W * 0.25}" fill="#7a5ac0" opacity=".25"/>`,
+  };
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}"><defs>${defs}</defs><g filter="url(#b)">${sc[name]()}</g></svg>`;
+}
+
+async function vbBg(W, H) {
+  const c = Object.assign(document.createElement('canvas'), { width: W, height: H }), x = c.getContext('2d');
+  const m = vbCfg.m;
+  if (m === 'color') { x.fillStyle = vbCfg.c; x.fillRect(0, 0, W, H); return c; }
+  const img = new Image();
+  if (m.startsWith('s:')) img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(vbScene(m.slice(2), W, H));
+  else img.src = store('tp.vbgimg') || '';
+  try { await img.decode(); } catch { x.fillStyle = '#222'; x.fillRect(0, 0, W, H); return c; }
+  const k = Math.max(W / img.width, H / img.height), w = img.width * k, h = img.height * k;
+  x.drawImage(img, (W - w) / 2, (H - h) / 2, w, h);
+  return c;
+}
+
+function vbStop() {
+  VB.on = false; clearTimeout(VB.t); VB.cv?.remove(); VB.cv = VB.out = null;
+  const v = $('cam'); if (v) v.style.visibility = '';
+}
+
+function vbStart() {
+  vbStop();
+  if (vbCfg.m === 'none') return Promise.resolve();
+  return VB.starting = (async () => {
+    const v = $('cam'); say(tr('vbLoad'));
+    let seg; try { seg = await vbSeg(); } catch { uiAlert(tr('vbFail')); return; }
+    const k = Math.min(1, 720 / Math.min(v.videoWidth, v.videoHeight)), W = Math.round(v.videoWidth * k), H = Math.round(v.videoHeight * k);
+    const mk = (w, h) => Object.assign(document.createElement('canvas'), { width: w, height: h });
+    const cv = mk(W, H), pc = mk(W, H), mc = mk(1, 1), sm = mk(Math.ceil(W / 24), Math.ceil(H / 24));
+    const cx = cv.getContext('2d'), px = pc.getContext('2d'), mx = mc.getContext('2d'), sx = sm.getContext('2d');
+    cx.imageSmoothingQuality = 'high';
+    let mi = null, bg = vbCfg.m === 'blur' ? null : await vbBg(W, H);
+    if (!$('cam').srcObject) return; // fechou a camera enquanto carregava
+    cv.id = 'vc'; v.after(cv); v.style.visibility = 'hidden'; VB.cv = cv; VB.on = true; fitCam();
+    VB.out = new MediaStream([...cv.captureStream(30).getVideoTracks(), ...(stream?.getAudioTracks() || [])]);
+    const onMask = r => {
+      const m = r.confidenceMasks[0], a = m.getAsFloat32Array();
+      if (mc.width !== m.width || mc.height !== m.height) { mc.width = m.width; mc.height = m.height; mi = mx.createImageData(m.width, m.height); }
+      const d = mi.data;
+      for (let i = 0, j = 3; i < a.length; i++, j += 4) { const t = Math.min(1, Math.max(0, (a[i] - 0.3) / 0.4)); d[j] = t * t * (3 - 2 * t) * 255; }
+      mx.putImageData(mi, 0, 0);
+    };
+    let last = -1;
+    const step = () => {
+      if (!VB.on) return;
+      if (v.readyState >= 2 && v.currentTime !== last) {
+        last = v.currentTime;
+        try { seg.segmentForVideo(v, performance.now(), onMask); } catch {}
+        px.globalCompositeOperation = 'copy'; px.drawImage(mc, 0, 0, W, H);
+        px.globalCompositeOperation = 'source-in'; px.drawImage(v, 0, 0, W, H);
+        if (bg) cx.drawImage(bg, 0, 0); else { sx.drawImage(v, 0, 0, sm.width, sm.height); cx.drawImage(sm, 0, 0, W, H); }
+        cx.drawImage(pc, 0, 0);
+      }
+      VB.t = setTimeout(step, 33); // setTimeout (nao rAF): segue rodando com a aba em segundo plano, ex.: com a janela flutuante sobre o Zoom
+    };
+    step();
+  })().finally(() => { VB.starting = null; });
+}
+
+$('cvbg').value = vbCfg.m; $('cvc').value = vbCfg.c;
+const vbUi = () => { $('cvcL').hidden = vbCfg.m !== 'color'; $('cvfL').hidden = vbCfg.m !== 'img'; };
+vbUi();
+$('cvbg').onchange = () => { vbCfg.m = $('cvbg').value; saveVb(); vbUi(); if (vbCfg.m === 'img' && !store('tp.vbgimg')) $('cvf').click(); };
+$('cvc').oninput = () => { vbCfg.c = $('cvc').value; saveVb(); };
+$('cvf').onchange = async () => {
+  const f = $('cvf').files[0]; if (!f) return;
+  const bm = await createImageBitmap(f), k = Math.min(1, 1280 / Math.max(bm.width, bm.height));
+  const c = Object.assign(document.createElement('canvas'), { width: Math.round(bm.width * k), height: Math.round(bm.height * k) });
+  c.getContext('2d').drawImage(bm, 0, 0, c.width, c.height);
+  store('tp.vbgimg', c.toDataURL('image/jpeg', 0.82));
+};
 
 async function openCam() {
   saveCur(); store('tp.mode', $('mode').value); store('tp.sens', $('sens').value); store('tp.slang', $('slang').value); store('tp.sp', $('sp').value);
@@ -830,6 +943,7 @@ async function openCam() {
 function closeCam() {
   pipWin?.close(); rcStop(); stopScroll(); stopSpeech();
   if (recorder && recorder.state !== 'inactive') recorder.stop();
+  vbStop();
   stream?.getTracks().forEach(t => t.stop()); stream = null;
   $('run').style.display = 'none'; $('setup').style.display = 'flex'; $('cont').style.display = 'none';
 }
@@ -852,9 +966,10 @@ async function begin(record, keep) {
   $('try').style.display = $('rec').style.display = $('cont').style.display = 'none';
   await countdown();
   if (record) {
+    await VB.starting; // espera o fundo virtual ficar pronto para nao gravar a camera crua
     const type = ['video/mp4', 'video/webm;codecs=vp9,opus', 'video/webm'].find(t => MediaRecorder.isTypeSupported(t));
     chunks = [];
-    recorder = new MediaRecorder(stream, type ? { mimeType: type } : undefined);
+    recorder = new MediaRecorder(VB.out || stream, type ? { mimeType: type } : undefined);
     recorder.ondataavailable = e => e.data.size && chunks.push(e.data);
     const t0 = Date.now(), maxS = q?.plan.max_video_seconds || 0;
     const cap = maxS && setTimeout(() => { if (recorder.state !== 'inactive') { uiAlert(tr('quotaCut')); recorder.stop(); stopScroll(); stopSpeech(); } }, maxS * 1000);
