@@ -1,5 +1,5 @@
 // Offline: guarda o app na primeira visita; mudou o app, troque a versão para renovar o cache.
-const V = 'tp-v16', FILES = ['./', 'index.html', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'icon-180.png'];
+const V = 'tp-v17', FILES = ['./', 'index.html', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'icon-180.png'];
 // Fundo virtual: biblioteca e modelo do MediaPipe (versao fixa) ficam em cache proprio para funcionar offline depois da 1a vez.
 const VBG = 'tp-vbg', VBG_HOSTS = ['cdn.jsdelivr.net', 'storage.googleapis.com'];
 self.addEventListener('install', e => e.waitUntil(caches.open(V).then(c => c.addAll(FILES)).then(() => self.skipWaiting())));
