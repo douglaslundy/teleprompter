@@ -1,0 +1,2 @@
+Fotos de fundo: Pexels (https://www.pexels.com/license/), uso livre, sem credito obrigatorio.
+library=pexels.com/photo/34876157  office=29304264  mansion=6283968  beach=31817163  home=28461040  loft=7018828

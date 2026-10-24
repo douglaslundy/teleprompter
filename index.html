@@ -63,6 +63,8 @@ button.main{background:#d22;border-color:#d22;font-weight:600;font-size:18px}
 #msg{position:absolute;left:12px;right:12px;bottom:calc(max(12px,env(safe-area-inset-bottom)) + 120px);text-align:center;font-size:14px;color:#ffd23f;text-shadow:0 0 4px #000}
 #vbs{position:absolute;left:10px;top:calc(env(safe-area-inset-top) + 4px);font-size:12px;color:#fff;background:rgba(0,0,0,.55);border-radius:8px;padding:6px 10px;z-index:5;cursor:pointer}
 #vbs[hidden]{display:none}
+#vbdiag{position:absolute;inset:44px 8px 90px 8px;z-index:9;background:rgba(0,0,0,.92);border:1px solid #555;border-radius:10px;padding:10px;overflow:auto;font-size:11px;color:#ddd}
+#vbdiag[hidden]{display:none}#vbdiag pre{white-space:pre-wrap;word-break:break-word;margin:0 0 8px;font:11px/1.35 ui-monospace,monospace}
 #lvl{position:absolute;right:8px;top:18%;bottom:34%;width:9px;background:rgba(0,0,0,.45);border:1px solid rgba(255,255,255,.35);border-radius:6px;overflow:hidden;z-index:6;pointer-events:none}
 #lvl i{position:absolute;left:0;right:0;bottom:0;height:0;background:linear-gradient(to top,#2c6 0,#2c6 60%,#fc3 80%,#e33 100%)}
 #lvw{position:absolute;left:12px;right:30px;top:calc(env(safe-area-inset-top) + 44px);z-index:7;background:rgba(160,20,20,.9);color:#fff;border-radius:10px;padding:8px 12px;font-size:13px}
@@ -141,6 +143,7 @@ button.main{background:#d22;border-color:#d22;font-weight:600;font-size:18px}
   <div id="count"></div>
   <div id="msg"></div>
   <div id="vbs" hidden></div>
+  <div id="vbdiag" hidden><pre id="vbdiagt"></pre><div><button id="vbdiagInv">⟲ Inverter recorte</button> <button id="vbdiagX">Fechar</button></div></div>
   <div id="lvl"><i></i></div><div id="lvw" hidden></div>
   <div id="vbp" hidden></div>
   <div id="bar">
@@ -174,7 +177,7 @@ const LANGS = {
 No outro celular ou PC abra:
 ${u}/remote.html
 
-Código: ${c}`, rcOff: 'Controle remoto desligado.', rcFail: 'Não foi possível ligar o controle remoto (API fora do ar?).', rcUrl: 'Endereço da API (ex.: https://api.seudominio.com)', ok: 'OK', cancel: 'Cancelar', delete: 'Excluir', vb: 'Fundo do vídeo', vbNone: 'Nenhum', vbBlur: 'Desfocar', vbColor: 'Cor sólida', vbImg: 'Minha foto', vbUp: 'Escolher foto', vbLib: 'Biblioteca', vbOff: 'Escritório', vbMan: 'Mansão de luxo', vbBeach: 'Casa na praia (janela e estante)', vbHome: 'Home office com estante', vbLoft: 'Loft industrial', vbGrad: 'Degradê', vbLoad: 'Carregando fundo virtual…', mVoice: 'Rolar enquanto eu falo (grava com áudio)', srAndroid: 'No Android, o reconhecimento de fala costuma ocupar o microfone e o vídeo sai SEM ÁUDIO. Para gravar com som, use "Rolar enquanto eu falo".', noAudio: '🎤 Sem áudio detectado. Verifique o microfone. No Android, o modo "Acompanhar minha fala" pode ocupar o microfone: use "Rolar enquanto eu falo".', redo: '↺ Regravar', saveRedo: '💾 Salvar e regravar', redoConfirm: 'Descartar esta gravação e gravar de novo desde o começo?', vbBgBad: 'imagem do fundo falhou', vbOn: 'Fundo ativo', newTake: 'Novo trecho: o vídeo anterior foi salvo e a gravação continua.', camMis: (w, h) => `A câmera entregou ${w}×${h}, orientação contrária à escolhida: girei o quadro. Se ficou de lado ou de cabeça para baixo, toque em ⟳.`, vbFail: 'Não foi possível carregar o fundo virtual (precisa de internet na primeira vez). Gravando sem fundo.', newScript: '+ Novo roteiro', import: 'Importar', untitled: 'Sem título', myScript: 'Meu roteiro',
+Código: ${c}`, rcOff: 'Controle remoto desligado.', rcFail: 'Não foi possível ligar o controle remoto (API fora do ar?).', rcUrl: 'Endereço da API (ex.: https://api.seudominio.com)', ok: 'OK', cancel: 'Cancelar', delete: 'Excluir', vb: 'Fundo do vídeo', vbNone: 'Nenhum', vbBlur: 'Desfocar', vbColor: 'Cor sólida', vbImg: 'Minha foto', vbUp: 'Escolher foto', vbLib: 'Biblioteca', vbOff: 'Escritório', vbMan: 'Mansão de luxo', vbBeach: 'Casa na praia (janela e estante)', vbHome: 'Home office com estante', vbLoft: 'Loft industrial', vbGrad: 'Degradê', vbLoad: 'Carregando fundo virtual…', mVoice: 'Rolar enquanto eu falo (grava com áudio)', srAndroid: 'No Android e no iPhone, o reconhecimento de fala costuma ocupar o microfone e o vídeo sai SEM ÁUDIO. Para gravar com som, use "Rolar enquanto eu falo".', noAudio: '🎤 Sem áudio detectado. Verifique o microfone. No Android e no iPhone, o modo "Acompanhar minha fala" pode ocupar o microfone: use "Rolar enquanto eu falo".', redo: '↺ Regravar', saveRedo: '💾 Salvar e regravar', redoConfirm: 'Descartar esta gravação e gravar de novo desde o começo?', vbBgBad: 'imagem do fundo falhou', vbOn: 'Fundo ativo', newTake: 'Novo trecho: o vídeo anterior foi salvo e a gravação continua.', camMis: (w, h) => `A câmera entregou ${w}×${h}, orientação contrária à escolhida: girei o quadro. Se ficou de lado ou de cabeça para baixo, toque em ⟳.`, vbFail: 'Não foi possível carregar o fundo virtual (precisa de internet na primeira vez). Gravando sem fundo.', newScript: '+ Novo roteiro', import: 'Importar', untitled: 'Sem título', myScript: 'Meu roteiro',
     emptyList: 'Nenhum roteiro ainda. Toque em "Novo roteiro".', words: n => `${n} palavras`,
     titlePh: 'Título do roteiro', scriptPh: 'Cole ou escreva o roteiro aqui',
     mode: 'Modo', mSpeed: 'Velocidade', mTime: 'Tempo fixo', mWpm: 'Palavras por minuto', mSpeech: 'Acompanhar minha fala',
@@ -202,7 +205,7 @@ Código: ${c}`, rcOff: 'Controle remoto desligado.', rcFail: 'Não foi possível
 On the other phone or PC open:
 ${u}/remote.html
 
-Code: ${c}`, rcOff: 'Remote control off.', rcFail: 'Could not start the remote control (API down?).', rcUrl: 'API address (e.g. https://api.yourdomain.com)', ok: 'OK', cancel: 'Cancel', delete: 'Delete', vb: 'Video background', vbNone: 'None', vbBlur: 'Blur', vbColor: 'Solid color', vbImg: 'My photo', vbUp: 'Choose photo', vbLib: 'Library', vbOff: 'Office', vbMan: 'Luxury mansion', vbBeach: 'Beach house (window and bookshelf)', vbHome: 'Home office with bookshelf', vbLoft: 'Industrial loft', vbGrad: 'Gradient', vbLoad: 'Loading virtual background…', mVoice: 'Scroll while I speak (records with audio)', srAndroid: 'On Android, speech recognition usually takes over the microphone and the video has NO AUDIO. To record with sound, use "Scroll while I speak".', noAudio: '🎤 No audio detected. Check the microphone. On Android, "Follow my speech" can take over the microphone: use "Scroll while I speak".', redo: '↺ Record again', saveRedo: '💾 Save and record again', redoConfirm: 'Discard this recording and record again from the start?', vbBgBad: 'background image failed', vbOn: 'Background on', newTake: 'New take: the previous video was saved and recording goes on.', camMis: (w, h) => `The camera delivered ${w}×${h}, opposite to the chosen orientation: I rotated the frame. If it is sideways or upside down, tap ⟳.`, vbFail: 'Could not load the virtual background (needs internet the first time). Recording without it.', newScript: '+ New script', import: 'Import', untitled: 'Untitled', myScript: 'My script',
+Code: ${c}`, rcOff: 'Remote control off.', rcFail: 'Could not start the remote control (API down?).', rcUrl: 'API address (e.g. https://api.yourdomain.com)', ok: 'OK', cancel: 'Cancel', delete: 'Delete', vb: 'Video background', vbNone: 'None', vbBlur: 'Blur', vbColor: 'Solid color', vbImg: 'My photo', vbUp: 'Choose photo', vbLib: 'Library', vbOff: 'Office', vbMan: 'Luxury mansion', vbBeach: 'Beach house (window and bookshelf)', vbHome: 'Home office with bookshelf', vbLoft: 'Industrial loft', vbGrad: 'Gradient', vbLoad: 'Loading virtual background…', mVoice: 'Scroll while I speak (records with audio)', srAndroid: 'On Android and iPhone, speech recognition usually takes over the microphone and the video has NO AUDIO. To record with sound, use "Scroll while I speak".', noAudio: '🎤 No audio detected. Check the microphone. On Android and iPhone, "Follow my speech" can take over the microphone: use "Scroll while I speak".', redo: '↺ Record again', saveRedo: '💾 Save and record again', redoConfirm: 'Discard this recording and record again from the start?', vbBgBad: 'background image failed', vbOn: 'Background on', newTake: 'New take: the previous video was saved and recording goes on.', camMis: (w, h) => `The camera delivered ${w}×${h}, opposite to the chosen orientation: I rotated the frame. If it is sideways or upside down, tap ⟳.`, vbFail: 'Could not load the virtual background (needs internet the first time). Recording without it.', newScript: '+ New script', import: 'Import', untitled: 'Untitled', myScript: 'My script',
     emptyList: 'No scripts yet. Tap "New script".', words: n => `${n} words`,
     titlePh: 'Script title', scriptPh: 'Paste or write your script here',
     mode: 'Mode', mSpeed: 'Speed', mTime: 'Fixed time', mWpm: 'Words per minute', mSpeech: 'Follow my speech',
@@ -230,7 +233,7 @@ Code: ${c}`, rcOff: 'Remote control off.', rcFail: 'Could not start the remote c
 En el otro móvil o PC abre:
 ${u}/remote.html
 
-Código: ${c}`, rcOff: 'Control remoto desactivado.', rcFail: 'No se pudo activar el control remoto (¿API caída?).', rcUrl: 'Dirección de la API (ej.: https://api.tudominio.com)', ok: 'OK', cancel: 'Cancelar', delete: 'Eliminar', vb: 'Fondo del vídeo', vbNone: 'Ninguno', vbBlur: 'Desenfocar', vbColor: 'Color sólido', vbImg: 'Mi foto', vbUp: 'Elegir foto', vbLib: 'Biblioteca', vbOff: 'Oficina', vbMan: 'Mansión de lujo', vbBeach: 'Casa en la playa (ventana y estantería)', vbHome: 'Home office con estantería', vbLoft: 'Loft industrial', vbGrad: 'Degradado', vbLoad: 'Cargando fondo virtual…', mVoice: 'Desplazar mientras hablo (graba con audio)', srAndroid: 'En Android, el reconocimiento de voz suele ocupar el micrófono y el vídeo queda SIN AUDIO. Para grabar con sonido, usa "Desplazar mientras hablo".', noAudio: '🎤 No se detecta audio. Revisa el micrófono. En Android, "Seguir mi voz" puede ocupar el micrófono: usa "Desplazar mientras hablo".', redo: '↺ Regrabar', saveRedo: '💾 Guardar y regrabar', redoConfirm: '¿Descartar esta grabación y grabar de nuevo desde el principio?', vbBgBad: 'falló la imagen de fondo', vbOn: 'Fondo activo', newTake: 'Nuevo tramo: el vídeo anterior se guardó y la grabación continúa.', camMis: (w, h) => `La cámara entregó ${w}×${h}, orientación contraria a la elegida: giré el cuadro. Si quedó de lado o al revés, toca ⟳.`, vbFail: 'No se pudo cargar el fondo virtual (necesita internet la primera vez). Grabando sin fondo.', newScript: '+ Nuevo guion', import: 'Importar', untitled: 'Sin título', myScript: 'Mi guion',
+Código: ${c}`, rcOff: 'Control remoto desactivado.', rcFail: 'No se pudo activar el control remoto (¿API caída?).', rcUrl: 'Dirección de la API (ej.: https://api.tudominio.com)', ok: 'OK', cancel: 'Cancelar', delete: 'Eliminar', vb: 'Fondo del vídeo', vbNone: 'Ninguno', vbBlur: 'Desenfocar', vbColor: 'Color sólido', vbImg: 'Mi foto', vbUp: 'Elegir foto', vbLib: 'Biblioteca', vbOff: 'Oficina', vbMan: 'Mansión de lujo', vbBeach: 'Casa en la playa (ventana y estantería)', vbHome: 'Home office con estantería', vbLoft: 'Loft industrial', vbGrad: 'Degradado', vbLoad: 'Cargando fondo virtual…', mVoice: 'Desplazar mientras hablo (graba con audio)', srAndroid: 'En Android y iPhone, el reconocimiento de voz suele ocupar el micrófono y el vídeo queda SIN AUDIO. Para grabar con sonido, usa "Desplazar mientras hablo".', noAudio: '🎤 No se detecta audio. Revisa el micrófono. En Android y iPhone, "Seguir mi voz" puede ocupar el micrófono: usa "Desplazar mientras hablo".', redo: '↺ Regrabar', saveRedo: '💾 Guardar y regrabar', redoConfirm: '¿Descartar esta grabación y grabar de nuevo desde el principio?', vbBgBad: 'falló la imagen de fondo', vbOn: 'Fondo activo', newTake: 'Nuevo tramo: el vídeo anterior se guardó y la grabación continúa.', camMis: (w, h) => `La cámara entregó ${w}×${h}, orientación contraria a la elegida: giré el cuadro. Si quedó de lado o al revés, toca ⟳.`, vbFail: 'No se pudo cargar el fondo virtual (necesita internet la primera vez). Grabando sin fondo.', newScript: '+ Nuevo guion', import: 'Importar', untitled: 'Sin título', myScript: 'Mi guion',
     emptyList: 'Aún no hay guiones. Toca "Nuevo guion".', words: n => `${n} palabras`,
     titlePh: 'Título del guion', scriptPh: 'Pega o escribe el guion aquí',
     mode: 'Modo', mSpeed: 'Velocidad', mTime: 'Tiempo fijo', mWpm: 'Palabras por minuto', mSpeech: 'Seguir mi voz',
@@ -859,6 +862,7 @@ function fitCam() {
 }
 addEventListener('resize', fitCam);
 
+addEventListener('pointerdown', () => LV.ctx?.state === 'suspended' && LV.ctx.resume().catch(() => {}), { passive: true });
 // ---- Medidor de audio: barra vertical que sobe com a voz; avisa se o video estiver sem som
 const LV = { lvl: 0, heard: 0, quiet: 0, t: 0, ctx: null };
 function lvStop() { clearInterval(LV.t); LV.ctx?.close().catch(() => {}); LV.ctx = null; $('lvl').firstElementChild.style.height = '0'; $('lvw').hidden = true; }
@@ -877,65 +881,96 @@ function lvStart(st) {
       LV.lvl = v > LV.lvl ? v : LV.lvl * 0.85 + v * 0.15;
       if (v > 0.25) LV.heard = performance.now();
       $('lvl').firstElementChild.style.height = Math.round(LV.lvl * 100) + '%';
-      if (recording()) { LV.quiet = v < 0.03 || tk[0].muted ? LV.quiet + 50 : 0; $('lvw').hidden = LV.quiet < 4000; } else { LV.quiet = 0; $('lvw').hidden = true; }
+      if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+      if (recording() && ctx.state === 'running') { LV.quiet = v < 0.03 || tk[0].muted ? LV.quiet + 50 : 0; $('lvw').hidden = LV.quiet < 4000; } else { LV.quiet = 0; $('lvw').hidden = true; }
     }, 50);
   } catch {}
 }
 
-// ---- Fundo virtual: MediaPipe separa a pessoa; o canvas compoe fundo + pessoa e e ele que vai para o MediaRecorder ----
+// ---- Fundo virtual: MediaPipe separa a pessoa; o recorte e refinado pela borda real da imagem; o canvas vai para o MediaRecorder ----
 const MP = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14';
 const MODEL = 'https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_segmenter/float16/latest/selfie_segmenter.tflite';
-const VB = { n: 0, inv: false, flip: 0, bgBad: false, rot: (r => r === null ? 90 : +r)(store('tp.rot')), seg: null, on: false, cv: null, out: null, t: 0, starting: null };
+const VB = { n: 0, inv: false, flip: 0, bgBad: false, rot: (r => r === null ? 90 : +r)(store('tp.rot')), seg: null, on: false, cv: null, out: null, t: 0, starting: null, log: [], seen: new Set() };
+const vbLog = m => { VB.log.push(new Date().toLocaleTimeString() + ' ' + m); VB.log.splice(0, VB.log.length - 40); if (!$('vbdiag').hidden) dbgShow(); };
 const vbCfg = { m: 'none', c: '#1e3a5f' };
 try { Object.assign(vbCfg, JSON.parse(store('tp.vbg'))); } catch {}
 const saveVb = () => store('tp.vbg', JSON.stringify(vbCfg));
 
 function vbSeg() {
   return VB.seg ||= (async () => {
+    vbLog('baixando MediaPipe');
     const { ImageSegmenter, FilesetResolver } = await import(MP + '/vision_bundle.mjs');
     const fs = await FilesetResolver.forVisionTasks(MP + '/wasm');
     const mk = delegate => ImageSegmenter.createFromOptions(fs, { baseOptions: { modelAssetPath: MODEL, delegate }, runningMode: 'VIDEO', outputConfidenceMasks: true, outputCategoryMask: false });
-    try { return await mk('GPU'); } catch { return await mk('CPU'); }
-  })().catch(e => { VB.seg = null; throw e; });
+    try { const s = await mk('GPU'); vbLog('modelo pronto (GPU)'); return s; }
+    catch (e) { vbLog('GPU falhou: ' + (e?.message || e)); const s = await mk('CPU'); vbLog('modelo pronto (CPU)'); return s; }
+  })().catch(e => { vbLog('ERRO no modelo: ' + (e?.message || e)); VB.seg = null; throw e; });
 }
 
-// Cenas desenhadas em SVG (ilustracoes desfocadas, nao fotos); x/y/w/h em fracao da tela para servir em vertical e horizontal.
-function vbScene(name, W, H) {
-  let s = 7; const rnd = () => (s = (s * 16807) % 2147483647) / 2147483647;
-  const r = (x, y, w, h, f, o = '') => `<rect x="${x * W}" y="${y * H}" width="${w * W}" height="${h * H}" fill="${f}" ${o}/>`;
-  const books = (x, y, w, h, n) => { let o = '', bx = x; const pal = ['#8b2e2e', '#2e4a8b', '#2e6b4a', '#c9a227', '#5a3a1e', '#6b2e6b', '#d8cdb4', '#3a3a3a']; for (let i = 0; i < n && bx < x + w - 0.01; i++) { const bw = (0.006 + rnd() * 0.01) * (W > H ? 1 : 2), bh = h * (0.7 + rnd() * 0.3); o += r(bx, y + h - bh, bw, bh, pal[(rnd() * 8) | 0]); bx += bw + 0.001; } return o; };
-  const shelf = (x, y, w, h, rows) => { let o = r(x, y, w, h, '#4a2f1a'); for (let i = 0; i < rows; i++) { const ry = y + (h / rows) * i + 0.01; o += r(x + 0.01, ry, w - 0.02, h / rows - 0.015, '#2b1a0e') + books(x + 0.015, ry, w - 0.03, h / rows - 0.02, 60); } return o; };
-  const lin = (id, a, b) => `<linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${a}"/><stop offset="1" stop-color="${b}"/></linearGradient>`;
-  const defs = lin('g1', '#a9d4f5', '#e8f4fc') + lin('g2', '#3b2a4f', '#1e3a5f') + lin('g3', '#f0e4c8', '#c9b68a') + `<filter id="b"><feGaussianBlur stdDeviation="${W / 220}"/></filter>`;
-  const sc = {
-    library: () => r(0, 0, 1, 1, '#2a1a10') + shelf(0.02, 0.05, 0.3, 0.9, 6) + shelf(0.35, 0.05, 0.3, 0.9, 6) + shelf(0.68, 0.05, 0.3, 0.9, 6) + `<ellipse cx="${W / 2}" cy="${H * 0.2}" rx="${W * 0.4}" ry="${H * 0.25}" fill="#ffcf7a" opacity=".18"/>`,
-    office: () => r(0, 0, 1, 1, '#e4e6ea') + r(0.52, 0.1, 0.42, 0.55, '#6f7782') + r(0.54, 0.12, 0.38, 0.51, 'url(#g1)') + [0, 1, 2, 3, 4].map(i => r(0.55 + i * 0.075, 0.4 - rnd() * 0.15, 0.06, 0.23, '#7f94aa')).join('') + r(0, 0.82, 1, 0.18, '#8a6a4a') + r(0.06, 0.15, 0.18, 0.22, '#fff', 'stroke="#aaa" stroke-width="3"') + r(0.09, 0.19, 0.12, 0.14, '#9bb7d4') + `<ellipse cx="${W * 0.1}" cy="${H * 0.75}" rx="${W * 0.05}" ry="${H * 0.12}" fill="#3f7d4e"/>`,
-    mansion: () => r(0, 0, 1, 1, 'url(#g3)') + [0.12, 0.42, 0.72].map(x => r(x, 0.08, 0.16, 0.6, '#9fc3e0') + `<path d="M${x * W} ${0.08 * H} a${0.08 * W} ${0.08 * W} 0 0 1 ${0.16 * W} 0" fill="#9fc3e0"/>` + r(x - 0.02, 0.05, 0.03, 0.72, '#b8963e') + r(x + 0.15, 0.05, 0.03, 0.72, '#b8963e')).join('') + [0.3, 0.5, 0.7].map(x => `<circle cx="${x * W}" cy="${0.06 * H}" r="${W * 0.014}" fill="#ffd77a"/>`).join('') + [...Array(12)].map((_, i) => [...Array(4)].map((_, j) => r(i / 12, 0.78 + j * 0.055, 1 / 12, 0.055, (i + j) % 2 ? '#f4f1ea' : '#2c2c2c')).join('')).join(''),
-    beach: () => r(0, 0, 1, 1, '#ece4d6') + r(0.04, 0.1, 0.44, 0.64, '#fff') + r(0.06, 0.12, 0.4, 0.6, 'url(#g1)') + r(0.06, 0.4, 0.4, 0.14, '#2f86b8') + r(0.06, 0.54, 0.4, 0.18, '#e6d3a1') + `<circle cx="${W * 0.36}" cy="${H * 0.24}" r="${W * 0.03}" fill="#ffe08a"/>` + r(0.26, 0.12, 0.012, 0.6, '#fff') + r(0.06, 0.42, 0.4, 0.012, '#fff') + shelf(0.56, 0.08, 0.38, 0.74, 5) + r(0, 0.84, 1, 0.16, '#9b7650'),
-    home: () => r(0, 0, 1, 1, '#41594a') + shelf(0.1, 0.1, 0.5, 0.6, 4) + r(0.7, 0.12, 0.2, 0.28, '#e9e2d0') + r(0.72, 0.14, 0.16, 0.24, '#7da0c0') + `<ellipse cx="${W * 0.78}" cy="${H * 0.78}" rx="${W * 0.07}" ry="${H * 0.14}" fill="#2f7a3e"/>` + r(0, 0.88, 1, 0.12, '#7a5a3a'),
-    loft: () => r(0, 0, 1, 1, '#8a4a3a') + [...Array(14)].map((_, i) => [...Array(10)].map((_, j) => r(j / 10 + (i % 2) * 0.05 - 0.05, i / 14, 0.098, 0.068, '#a85a46')).join('')).join('') + r(0.3, 0.1, 0.4, 0.6, '#222') + [0, 1, 2].map(i => [0, 1, 2].map(j => r(0.31 + i * 0.13, 0.11 + j * 0.195, 0.12, 0.185, '#b7d3e8')).join('')).join('') + `<path d="M${W * 0.15} 0 V${H * 0.2}" stroke="#222" stroke-width="3"/><path d="M${W * 0.1} ${H * 0.2} h${W * 0.1} l-${W * 0.02} ${H * 0.06} h-${W * 0.06}z" fill="#222"/>`,
-    grad: () => r(0, 0, 1, 1, 'url(#g2)') + `<circle cx="${W * 0.8}" cy="${H * 0.2}" r="${W * 0.25}" fill="#7a5ac0" opacity=".25"/>`,
-  };
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}"><defs>${defs}</defs><g filter="url(#b)">${sc[name]()}</g></svg>`;
+// Desfoque barato (reduz e amplia): o fundo fica levemente fora de foco, o que esconde falhas na borda do recorte.
+function softBlur(c, f) {
+  const s = Object.assign(document.createElement('canvas'), { width: Math.ceil(c.width / f), height: Math.ceil(c.height / f) }), x = c.getContext('2d');
+  s.getContext('2d').drawImage(c, 0, 0, s.width, s.height); x.imageSmoothingQuality = 'high'; x.drawImage(s, 0, 0, c.width, c.height);
 }
+const loadImg = src => new Promise((ok, no) => { const i = new Image(); i.onload = () => ok(i); i.onerror = () => no(new Error('nao carregou ' + src.slice(0, 40))); i.src = src; });
 
 async function vbBg(W, H) {
-  const c = Object.assign(document.createElement('canvas'), { width: W, height: H }), x = c.getContext('2d');
   const m = vbCfg.m;
   if (m === 'none' || m === 'blur') return null;
-  if (m === 'color') { x.fillStyle = vbCfg.c; x.fillRect(0, 0, W, H); return c; }
-  const img = new Image();
-  if (m.startsWith('s:')) img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(vbScene(m.slice(2), W, H));
-  else img.src = store('tp.vbgimg') || '';
+  const c = Object.assign(document.createElement('canvas'), { width: W, height: H }), x = c.getContext('2d');
   VB.bgBad = false;
-  try { await img.decode(); } catch { VB.bgBad = true; x.fillStyle = '#222'; x.fillRect(0, 0, W, H); return c; }
-  const k = Math.max(W / img.width, H / img.height), w = img.width * k, h = img.height * k;
-  x.drawImage(img, (W - w) / 2, (H - h) / 2, w, h);
+  if (m === 'color') { x.fillStyle = vbCfg.c; x.fillRect(0, 0, W, H); return c; }
+  if (m === 's:grad') { const g = x.createLinearGradient(0, 0, W * 0.4, H); g.addColorStop(0, '#3b2a4f'); g.addColorStop(1, '#1e3a5f'); x.fillStyle = g; x.fillRect(0, 0, W, H); return c; }
+  try {
+    const img = await loadImg(m.startsWith('s:') ? 'bg/' + m.slice(2) + '.jpg' : store('tp.vbgimg') || '');
+    const k = Math.max(W / img.width, H / img.height), w = img.width * k, h = img.height * k;
+    x.drawImage(img, (W - w) / 2, (H - h) / 2, w, h);
+    if (m.startsWith('s:')) softBlur(c, 3);
+    vbLog('fundo carregado ' + img.width + '×' + img.height);
+  } catch (e) { VB.bgBad = true; vbLog('ERRO no fundo: ' + e.message); x.fillStyle = '#222'; x.fillRect(0, 0, W, H); }
   return c;
 }
 
-$('vbs').onclick = () => { VB.inv = !VB.inv; }; // inverte o recorte se, neste aparelho, saiu ao contrario
+// Filtro guiado (He et al.): alinha a mascara de 256 px as bordas reais da imagem (cabelo, ombros).
+function guidedFilter(w, h, r, eps) {
+  const n = w * h, f = () => new Float32Array(n), tmp = f(), A = f(), B = f(), mI = f(), mp = f(), mA = f(), mB = f(), mII = f();
+  const box = (src, dst) => {
+    for (let y = 0; y < h; y++) {
+      const o = y * w; let acc = 0;
+      for (let x = -r; x <= r; x++) acc += src[o + Math.min(w - 1, Math.max(0, x))];
+      for (let x = 0; x < w; x++) { tmp[o + x] = acc; acc += src[o + Math.min(w - 1, x + r + 1)] - src[o + Math.max(0, x - r)]; }
+    }
+    const k = (2 * r + 1) ** 2;
+    for (let x = 0; x < w; x++) {
+      let acc = 0;
+      for (let y = -r; y <= r; y++) acc += tmp[Math.min(h - 1, Math.max(0, y)) * w + x];
+      for (let y = 0; y < h; y++) { dst[y * w + x] = acc / k; acc += tmp[Math.min(h - 1, y + r + 1) * w + x] - tmp[Math.max(0, y - r) * w + x]; }
+    }
+  };
+  return (I, p, out) => {
+    box(I, mI); box(p, mp);
+    for (let i = 0; i < n; i++) { A[i] = I[i] * p[i]; B[i] = I[i] * I[i]; }
+    box(A, mA); box(B, mII);
+    for (let i = 0; i < n; i++) { const a = (mA[i] - mI[i] * mp[i]) / (mII[i] - mI[i] * mI[i] + eps); A[i] = a; B[i] = mp[i] - a * mI[i]; }
+    box(A, mA); box(B, mB);
+    for (let i = 0; i < n; i++) out[i] = mA[i] * I[i] + mB[i];
+  };
+}
+
 const chip = t => { const c = $('vbs'); c.textContent = t; c.hidden = !t; };
+function dbgShow() {
+  const tk = VB.out ? VB.out.getTracks().map(t => t.kind + ':' + t.readyState + (t.muted ? ':mudo' : '')).join(' ') : '-';
+  $('vbdiagt').textContent = [
+    navigator.userAgent.slice(0, 90), 'captureStream: ' + typeof HTMLCanvasElement.prototype.captureStream + ' · OffscreenCanvas: ' + typeof OffscreenCanvas + ' · MediaRecorder: ' + typeof MediaRecorder,
+    'fundo: ' + vbCfg.m + ' · pipeline: ' + VB.on + ' · canvas: ' + (VB.cv ? VB.cv.width + '×' + VB.cv.height : '-') + ' · giro: ' + vbRot() + ' · inv: ' + VB.inv,
+    'camera: ' + ($('cam').videoWidth + '×' + $('cam').videoHeight) + ' · recorder: ' + (recorder ? recorder.state + ' ' + recorder.mimeType : '-'),
+    'tracks de saida: ' + tk, 'audio: ' + (LV.ctx ? LV.ctx.state : '-') + ' nivel ' + Math.round(LV.lvl * 100) + '%', 'ultimo erro: ' + (VB.err ? String(VB.err.message || VB.err) : '-'), '', ...VB.log,
+  ].join('\n');
+}
+$('vbs').onclick = () => { $('vbdiag').hidden = !$('vbdiag').hidden; if (!$('vbdiag').hidden) dbgShow(); };
+$('vbdiagX').onclick = () => { $('vbdiag').hidden = true; };
+$('vbdiagInv').onclick = () => { VB.inv = !VB.inv; dbgShow(); }; // inverte o recorte se, neste aparelho, saiu ao contrario
+
 function vbStop() {
   VB.on = false; VB.cur = null; clearTimeout(VB.t); $('vbp').hidden = true; VB.cv?.remove(); VB.cv = VB.out = null;
 }
@@ -948,6 +983,7 @@ function vbStart() {
   const v = $('cam'), id = ++vbRun, rot = vbRot();
   if (vbCfg.m === 'none' && !rot) { chip(''); return Promise.resolve(); }
   return VB.starting = (async () => {
+    vbLog('iniciando fundo=' + vbCfg.m + ' giro=' + rot + ' camera=' + v.videoWidth + '×' + v.videoHeight);
     if (vbCfg.m !== 'none') {
       chip(tr('vbLoad'));
       try { VB.cur = await vbSeg(); } catch (e) { chip('⚠ ' + (e?.message || e)); uiAlert(tr('vbFail') + ' (' + (e?.message || e) + ')'); return; }
@@ -956,34 +992,52 @@ function vbStart() {
     const k = Math.min(1, 720 / Math.min(v.videoWidth, v.videoHeight)), fw = Math.round(v.videoWidth * k), fh = Math.round(v.videoHeight * k);
     const W = rot % 180 ? fh : fw, H = rot % 180 ? fw : fh; // tamanho final (troca com giro de 90/270)
     const mk = (w, h) => Object.assign(document.createElement('canvas'), { width: w, height: h });
-    const cv = mk(W, H), pc = mk(fw, fh), mc = mk(1, 1), sm = mk(Math.ceil(fw / 24), Math.ceil(fh / 24));
-    const cx = cv.getContext('2d'), px = pc.getContext('2d'), mx = mc.getContext('2d'), sx = sm.getContext('2d');
-    cx.imageSmoothingQuality = 'high';
-    let mi = null; VB.W = W; VB.H = H; VB.mode = vbCfg.m; VB.bg = await vbBg(W, H);
+    const gk = 256 / Math.max(fw, fh), gw = Math.round(fw * gk), gh = Math.round(fh * gk); // grade do refinamento (lado maior = 256)
+    const cv = mk(W, H), pc = mk(fw, fh), gc = mk(gw, gh), rd = mk(gw, gh), s1 = mk(Math.ceil(fw / 4), Math.ceil(fh / 4)), s2 = mk(Math.ceil(fw / 16), Math.ceil(fh / 16));
+    const cx = cv.getContext('2d'), px = pc.getContext('2d'), gx = gc.getContext('2d'), rx = rd.getContext('2d', { willReadFrequently: true }), x1 = s1.getContext('2d'), x2 = s2.getContext('2d');
+    cx.imageSmoothingQuality = x1.imageSmoothingQuality = x2.imageSmoothingQuality = 'high';
+    const gf = guidedFilter(gw, gh, 4, 0.01), n = gw * gh, G = new Float32Array(n), P = new Float32Array(n), Q = new Float32Array(n), ai = gx.createImageData(gw, gh);
+    VB.W = W; VB.H = H; VB.mode = vbCfg.m; VB.bg = await vbBg(W, H);
     if (id !== vbRun || !v.srcObject) return;
-    try { VB.out = new MediaStream([...cv.captureStream(30).getVideoTracks(), ...(stream?.getAudioTracks() || [])]); }
-    catch (e) { chip('⚠ ' + (e?.message || e)); uiAlert(tr('vbFail') + ' (' + (e?.message || e) + ')'); return; }
+    try { VB.out = new MediaStream([...cv.captureStream(30).getVideoTracks(), ...(stream?.getAudioTracks() || [])]); vbLog('captureStream ok: ' + VB.out.getTracks().length + ' tracks'); }
+    catch (e) { vbLog('ERRO captureStream: ' + (e?.message || e)); chip('⚠ ' + (e?.message || e)); uiAlert(tr('vbFail') + ' (' + (e?.message || e) + ')'); return; }
     Object.assign(cv.style, { position: 'absolute', zIndex: 0 }); // fica por cima do video, que continua visivel por baixo
     chip(tr('vbOn')); cv.id = 'vc'; v.after(cv); VB.cv = cv; VB.on = true; fitCam();
     const rotDraw = (img, w, h) => { cx.save(); cx.translate(W / 2, H / 2); cx.rotate(rot * Math.PI / 180); cx.drawImage(img, -w / 2, -h / 2, w, h); cx.restore(); };
+    let first = true, tick = 0; // segmenta/refina 1 quadro em 2 (aliviar celular); o quadro desenhado sempre usa a ultima mascara
     const onMask = r => {
-      const m = r.confidenceMasks[0], a = m.getAsFloat32Array();
-      if (mc.width !== m.width || mc.height !== m.height) { mc.width = m.width; mc.height = m.height; mi = mx.createImageData(m.width, m.height); }
-      const d = mi.data;
-      for (let i = 0, j = 3; i < a.length; i++, j += 4) { let t = Math.min(1, Math.max(0, (a[i] - 0.3) / 0.4)); if (VB.inv) t = 1 - t; d[j] = t * t * (3 - 2 * t) * 255; }
-      mx.putImageData(mi, 0, 0);
+      const m = r.confidenceMasks[0], a = m.getAsFloat32Array(), mw = m.width, mh = m.height;
+      // 1) mascara do modelo (256 px) -> grade do refinamento, com suavizacao no tempo
+      for (let y = 0; y < gh; y++) {
+        const sy = Math.min(mh - 1, Math.max(0, (y + 0.5) * mh / gh - 0.5)), y0 = sy | 0, y1 = Math.min(mh - 1, y0 + 1), fy = sy - y0;
+        for (let x = 0; x < gw; x++) {
+          const sx = Math.min(mw - 1, Math.max(0, (x + 0.5) * mw / gw - 0.5)), x0 = sx | 0, x1_ = Math.min(mw - 1, x0 + 1), fx = sx - x0;
+          const v0 = a[y0 * mw + x0] * (1 - fx) + a[y0 * mw + x1_] * fx, v1 = a[y1 * mw + x0] * (1 - fx) + a[y1 * mw + x1_] * fx;
+          let t = Math.min(1, Math.max(0, ((v0 * (1 - fy) + v1 * fy) - 0.3) / 0.4)); if (VB.inv) t = 1 - t;
+          const i = y * gw + x; P[i] = first ? t : P[i] * 0.45 + t * 0.55;
+        }
+      }
+      first = false;
+      // 2) guia: a propria imagem em tons de cinza
+      rx.drawImage(v, 0, 0, gw, gh); const d = rx.getImageData(0, 0, gw, gh).data;
+      for (let i = 0, j = 0; i < n; i++, j += 4) G[i] = (d[j] * 0.299 + d[j + 1] * 0.587 + d[j + 2] * 0.114) / 255;
+      gf(G, P, Q);
+      // 3) contraste da mascara refinada -> alfa
+      const ad = ai.data;
+      for (let i = 0, j = 3; i < n; i++, j += 4) { const t = Math.min(1, Math.max(0, (Q[i] - 0.35) / 0.3)); ad[j] = t * t * (3 - 2 * t) * 255; }
+      gx.putImageData(ai, 0, 0);
       if (++VB.n % 20 === 0) {
-        let c = 0; for (let j = 3; j < d.length; j += 4) if (d[j] > 128) c++;
+        let c = 0, tp = 0, ce = 0, nc = 0; const top = Math.max(1, Math.round(gh * 0.12));
+        for (let i = 0; i < n; i++) if (P[i] > 0.5) c++;
+        for (let y = 0; y < top; y++) for (let x = 0; x < gw; x++) tp += P[y * gw + x] > 0.5;
+        for (let y = Math.round(gh * 0.45); y < Math.round(gh * 0.8); y++) for (let x = Math.round(gw * 0.35); x < Math.round(gw * 0.65); x++) { ce += P[y * gw + x] > 0.5; nc++; }
+        tp /= top * gw; ce /= nc;
         // faixa do topo quase toda "pessoa" e o centro nao: mascara invertida neste aparelho -> inverte sozinho
-        const w = m.width, top = Math.max(1, Math.round(m.height * 0.12)); let tp = 0, ce = 0, nc = 0;
-        for (let y = 0; y < top; y++) for (let x = 0; x < w; x++) tp += d[(y * w + x) * 4 + 3] > 128;
-        for (let y = Math.round(m.height * 0.45); y < Math.round(m.height * 0.8); y++) for (let x = Math.round(w * 0.35); x < Math.round(w * 0.65); x++) { ce += d[(y * w + x) * 4 + 3] > 128; nc++; }
-        tp /= top * w; ce /= nc;
         VB.flip = tp > 0.7 && ce < 0.3 ? VB.flip + 1 : 0;
-        if (VB.flip >= 3) { VB.inv = !VB.inv; VB.flip = 0; }
-        const pp = Math.round(100 * c / a.length);
+        if (VB.flip >= 3) { VB.inv = !VB.inv; VB.flip = 0; vbLog('mascara invertida: corrigi sozinho'); }
+        const pp = Math.round(100 * c / n);
         chip(tr('vbOn') + ' · ' + pp + '%' + (VB.inv ? ' ⟲' : '') + (pp > 95 || pp < 2 ? ' ⚠' : '') + (VB.bgBad ? ' · ' + tr('vbBgBad') : ''));
-      } // % do quadro reconhecido como pessoa; toque no indicador para inverter o recorte
+      }
     };
     const step = () => {
       if (id !== vbRun || !VB.on) return;
@@ -991,18 +1045,20 @@ function vbStart() {
         if (v.readyState >= 2 && v.videoWidth) {
           if (VB.mode === 'none' || !VB.cur) rotDraw(v, fw, fh);
           else {
-            try { VB.cur.segmentForVideo(v, performance.now(), onMask); } catch (e) { VB.err = e; }
-            px.globalCompositeOperation = 'copy'; px.drawImage(mc, 0, 0, fw, fh);
+            if (tick++ % 2 === 0) try { VB.cur.segmentForVideo(v, performance.now(), onMask); } catch (e) { VB.err = e; if (!VB.seen.has(String(e))) { VB.seen.add(String(e)); vbLog('ERRO segmentar: ' + (e?.message || e)); } }
+            px.globalCompositeOperation = 'copy'; px.drawImage(gc, 0, 0, fw, fh);
             px.globalCompositeOperation = 'source-in'; px.drawImage(v, 0, 0, fw, fh);
-            if (VB.bg) cx.drawImage(VB.bg, 0, 0); else { sx.drawImage(v, 0, 0, sm.width, sm.height); rotDraw(sm, fw, fh); }
+            if (VB.bg) cx.drawImage(VB.bg, 0, 0);
+            else { x1.drawImage(v, 0, 0, s1.width, s1.height); x2.drawImage(s1, 0, 0, s2.width, s2.height); rotDraw(s2, fw, fh); } // desfoque em 2 etapas: sem "mosaico"
             rotDraw(pc, fw, fh);
           }
         }
-      } catch (e) { VB.err = e; } finally {
+      } catch (e) { VB.err = e; if (!VB.seen.has(String(e))) { VB.seen.add(String(e)); vbLog('ERRO desenhar: ' + (e?.message || e)); } } finally {
         if (id === vbRun && VB.on) VB.t = setTimeout(step, 33); // setTimeout (nao rAF): segue rodando com a aba em segundo plano, ex.: com a janela flutuante sobre o Zoom
       }
     };
     step();
+    setTimeout(() => { if (id === vbRun && VB.cv) { const q = Object.assign(document.createElement('canvas'), { width: 4, height: 4 }).getContext('2d'); q.drawImage(VB.cv, 0, 0, 4, 4); vbLog('1o quadro, pixels cantos: ' + [[0, 0], [3, 0]].map(([a, b]) => [...q.getImageData(a, b, 1, 1).data].slice(0, 3).join(',')).join(' | ')); } }, 2000);
   })().finally(() => { VB.starting = null; });
 }
 
@@ -1108,6 +1164,7 @@ async function begin(record, keep) {
     const type = ['video/mp4', 'video/webm;codecs=vp9,opus', 'video/webm'].find(t => MediaRecorder.isTypeSupported(t));
     chunks = [];
     const rc = recorder = new MediaRecorder(VB.out || stream, type ? { mimeType: type } : undefined);
+    vbLog('gravando ' + rc.mimeType + ' de ' + (VB.out ? 'canvas (fundo/giro)' : 'camera crua'));
     recorder.ondataavailable = e => e.data.size && chunks.push(e.data);
     const t0 = Date.now(), maxS = q?.plan.max_video_seconds || 0;
     const cap = maxS && setTimeout(() => { if (recorder.state !== 'inactive') { uiAlert(tr('quotaCut')); recorder.stop(); stopScroll(); stopSpeech(); } }, maxS * 1000);
@@ -1120,6 +1177,7 @@ async function begin(record, keep) {
       const srt = srtFrom(words.map(w => w.el.textContent).slice(capFrom), capT.slice(capFrom), Date.now() - t0); capT0 = 0;
       if (store('tp.token')) api('/usage/video', { seconds: Math.max(1, Math.round((Date.now() - t0) / 1000)) }).catch(() => {});
       const ext = recorder.mimeType.includes('mp4') ? 'mp4' : 'webm';
+      vbLog('gravacao parou: ' + chunks.reduce((n, c) => n + c.size, 0) + ' bytes');
       file = new File(chunks, `teleprompter-${Date.now()}${take > 1 ? '-t' + take : ''}.${ext}`, { type: recorder.mimeType });
       const id = lastRecId = Date.now();
       dbDo('readwrite', st => st.put({ id, name: file.name, title: (cur?.title || '') + (take > 1 ? ' · ' + tr('takeN', take) : ''), at: Date.now(), size: file.size, type: file.type, blob: file, srt }));
@@ -1226,7 +1284,7 @@ $('fsp').onclick = () => setFs(+$('fs').value + 4);
 $('spm').onclick = () => adj(-1);
 $('spp').onclick = () => adj(1);
 $('wpm').oninput = refreshSetup;
-$('mode').onchange = () => { refreshSetup(); if ($('mode').value === 'speech' && /Android/i.test(navigator.userAgent)) uiAlert(tr('srAndroid')); };
+$('mode').onchange = () => { refreshSetup(); if ($('mode').value === 'speech' && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) uiAlert(tr('srAndroid')); };
 </script>
 </body>
 </html>
