@@ -59,6 +59,8 @@ button.main{background:#d22;border-color:#d22;font-weight:600;font-size:18px}
 #bar button{padding:12px 14px;min-width:48px}
 #bar button.rec{background:#d22;border-color:#d22;font-weight:600}
 #msg{position:absolute;left:12px;right:12px;bottom:calc(max(12px,env(safe-area-inset-bottom)) + 120px);text-align:center;font-size:14px;color:#ffd23f;text-shadow:0 0 4px #000}
+#vbs{position:absolute;left:10px;top:calc(env(safe-area-inset-top) + 4px);font-size:12px;color:#fff;background:rgba(0,0,0,.55);border-radius:8px;padding:3px 8px;pointer-events:none;z-index:5}
+#vbs[hidden]{display:none}
 #vbp{position:absolute;left:0;right:0;bottom:calc(max(12px,env(safe-area-inset-bottom)) + 70px);display:flex;gap:8px;overflow-x:auto;padding:10px 12px;background:rgba(0,0,0,.75);z-index:5}
 #vbp[hidden]{display:none}#vbp button{flex:none;white-space:nowrap}#vbp button.on{background:#d22;border-color:#d22}
 #clk{position:absolute;right:10px;top:calc(env(safe-area-inset-top) + 4px);font-size:14px;font-variant-numeric:tabular-nums;color:#fff;background:rgba(0,0,0,.55);border-radius:8px;padding:3px 8px;pointer-events:none;display:none}
@@ -132,6 +134,7 @@ button.main{background:#d22;border-color:#d22;font-weight:600;font-size:18px}
   <div id="clk"></div>
   <div id="count"></div>
   <div id="msg"></div>
+  <div id="vbs" hidden></div>
   <div id="vbp" hidden></div>
   <div id="bar">
     <button id="back">✕</button>
@@ -139,6 +142,7 @@ button.main{background:#d22;border-color:#d22;font-weight:600;font-size:18px}
     <button id="rcBtn" title="Controle remoto">📱</button>
     <button id="pipBtn" title="Janela flutuante" hidden>🪟</button>
     <button id="vbBtn" title="Fundo">🖼</button>
+    <button id="aspBtn" title="Vertical / horizontal">↔</button>
     <button id="fsm">A−</button><button id="fsp">A+</button>
     <button id="spm">−</button><button id="spp">+</button>
     <button id="pause">⏸</button>
@@ -160,7 +164,7 @@ const LANGS = {
 No outro celular ou PC abra:
 ${u}/remote.html
 
-Código: ${c}`, rcOff: 'Controle remoto desligado.', rcFail: 'Não foi possível ligar o controle remoto (API fora do ar?).', rcUrl: 'Endereço da API (ex.: https://api.seudominio.com)', ok: 'OK', cancel: 'Cancelar', delete: 'Excluir', vb: 'Fundo do vídeo', vbNone: 'Nenhum', vbBlur: 'Desfocar', vbColor: 'Cor sólida', vbImg: 'Minha foto', vbUp: 'Escolher foto', vbLib: 'Biblioteca', vbOff: 'Escritório', vbMan: 'Mansão de luxo', vbBeach: 'Casa na praia (janela e estante)', vbHome: 'Home office com estante', vbLoft: 'Loft industrial', vbGrad: 'Degradê', vbLoad: 'Carregando fundo virtual…', vbNoRec: 'Para trocar o fundo durante a gravação, escolha um fundo (ou Desfocar) antes de começar a gravar.', vbFail: 'Não foi possível carregar o fundo virtual (precisa de internet na primeira vez). Gravando sem fundo.', newScript: '+ Novo roteiro', import: 'Importar', untitled: 'Sem título', myScript: 'Meu roteiro',
+Código: ${c}`, rcOff: 'Controle remoto desligado.', rcFail: 'Não foi possível ligar o controle remoto (API fora do ar?).', rcUrl: 'Endereço da API (ex.: https://api.seudominio.com)', ok: 'OK', cancel: 'Cancelar', delete: 'Excluir', vb: 'Fundo do vídeo', vbNone: 'Nenhum', vbBlur: 'Desfocar', vbColor: 'Cor sólida', vbImg: 'Minha foto', vbUp: 'Escolher foto', vbLib: 'Biblioteca', vbOff: 'Escritório', vbMan: 'Mansão de luxo', vbBeach: 'Casa na praia (janela e estante)', vbHome: 'Home office com estante', vbLoft: 'Loft industrial', vbGrad: 'Degradê', vbLoad: 'Carregando fundo virtual…', vbOn: 'Fundo ativo', newTake: 'Novo trecho: o vídeo anterior foi salvo e a gravação continua.', camMis: (w, h) => `A câmera entregou ${w}×${h}, na orientação contrária à escolhida. Gire o aparelho ou escolha a outra proporção.`, vbFail: 'Não foi possível carregar o fundo virtual (precisa de internet na primeira vez). Gravando sem fundo.', newScript: '+ Novo roteiro', import: 'Importar', untitled: 'Sem título', myScript: 'Meu roteiro',
     emptyList: 'Nenhum roteiro ainda. Toque em "Novo roteiro".', words: n => `${n} palavras`,
     titlePh: 'Título do roteiro', scriptPh: 'Cole ou escreva o roteiro aqui',
     mode: 'Modo', mSpeed: 'Velocidade', mTime: 'Tempo fixo', mWpm: 'Palavras por minuto', mSpeech: 'Acompanhar minha fala',
@@ -188,7 +192,7 @@ Código: ${c}`, rcOff: 'Controle remoto desligado.', rcFail: 'Não foi possível
 On the other phone or PC open:
 ${u}/remote.html
 
-Code: ${c}`, rcOff: 'Remote control off.', rcFail: 'Could not start the remote control (API down?).', rcUrl: 'API address (e.g. https://api.yourdomain.com)', ok: 'OK', cancel: 'Cancel', delete: 'Delete', vb: 'Video background', vbNone: 'None', vbBlur: 'Blur', vbColor: 'Solid color', vbImg: 'My photo', vbUp: 'Choose photo', vbLib: 'Library', vbOff: 'Office', vbMan: 'Luxury mansion', vbBeach: 'Beach house (window and bookshelf)', vbHome: 'Home office with bookshelf', vbLoft: 'Industrial loft', vbGrad: 'Gradient', vbLoad: 'Loading virtual background…', vbNoRec: 'To change the background while recording, pick one (or Blur) before you start recording.', vbFail: 'Could not load the virtual background (needs internet the first time). Recording without it.', newScript: '+ New script', import: 'Import', untitled: 'Untitled', myScript: 'My script',
+Code: ${c}`, rcOff: 'Remote control off.', rcFail: 'Could not start the remote control (API down?).', rcUrl: 'API address (e.g. https://api.yourdomain.com)', ok: 'OK', cancel: 'Cancel', delete: 'Delete', vb: 'Video background', vbNone: 'None', vbBlur: 'Blur', vbColor: 'Solid color', vbImg: 'My photo', vbUp: 'Choose photo', vbLib: 'Library', vbOff: 'Office', vbMan: 'Luxury mansion', vbBeach: 'Beach house (window and bookshelf)', vbHome: 'Home office with bookshelf', vbLoft: 'Industrial loft', vbGrad: 'Gradient', vbLoad: 'Loading virtual background…', vbOn: 'Background on', newTake: 'New take: the previous video was saved and recording goes on.', camMis: (w, h) => `The camera delivered ${w}×${h}, opposite to the chosen orientation. Rotate the device or pick the other ratio.`, vbFail: 'Could not load the virtual background (needs internet the first time). Recording without it.', newScript: '+ New script', import: 'Import', untitled: 'Untitled', myScript: 'My script',
     emptyList: 'No scripts yet. Tap "New script".', words: n => `${n} words`,
     titlePh: 'Script title', scriptPh: 'Paste or write your script here',
     mode: 'Mode', mSpeed: 'Speed', mTime: 'Fixed time', mWpm: 'Words per minute', mSpeech: 'Follow my speech',
@@ -216,7 +220,7 @@ Code: ${c}`, rcOff: 'Remote control off.', rcFail: 'Could not start the remote c
 En el otro móvil o PC abre:
 ${u}/remote.html
 
-Código: ${c}`, rcOff: 'Control remoto desactivado.', rcFail: 'No se pudo activar el control remoto (¿API caída?).', rcUrl: 'Dirección de la API (ej.: https://api.tudominio.com)', ok: 'OK', cancel: 'Cancelar', delete: 'Eliminar', vb: 'Fondo del vídeo', vbNone: 'Ninguno', vbBlur: 'Desenfocar', vbColor: 'Color sólido', vbImg: 'Mi foto', vbUp: 'Elegir foto', vbLib: 'Biblioteca', vbOff: 'Oficina', vbMan: 'Mansión de lujo', vbBeach: 'Casa en la playa (ventana y estantería)', vbHome: 'Home office con estantería', vbLoft: 'Loft industrial', vbGrad: 'Degradado', vbLoad: 'Cargando fondo virtual…', vbNoRec: 'Para cambiar el fondo durante la grabación, elige uno (o Desenfocar) antes de empezar a grabar.', vbFail: 'No se pudo cargar el fondo virtual (necesita internet la primera vez). Grabando sin fondo.', newScript: '+ Nuevo guion', import: 'Importar', untitled: 'Sin título', myScript: 'Mi guion',
+Código: ${c}`, rcOff: 'Control remoto desactivado.', rcFail: 'No se pudo activar el control remoto (¿API caída?).', rcUrl: 'Dirección de la API (ej.: https://api.tudominio.com)', ok: 'OK', cancel: 'Cancelar', delete: 'Eliminar', vb: 'Fondo del vídeo', vbNone: 'Ninguno', vbBlur: 'Desenfocar', vbColor: 'Color sólido', vbImg: 'Mi foto', vbUp: 'Elegir foto', vbLib: 'Biblioteca', vbOff: 'Oficina', vbMan: 'Mansión de lujo', vbBeach: 'Casa en la playa (ventana y estantería)', vbHome: 'Home office con estantería', vbLoft: 'Loft industrial', vbGrad: 'Degradado', vbLoad: 'Cargando fondo virtual…', vbOn: 'Fondo activo', newTake: 'Nuevo tramo: el vídeo anterior se guardó y la grabación continúa.', camMis: (w, h) => `La cámara entregó ${w}×${h}, orientación contraria a la elegida. Gira el dispositivo o elige la otra proporción.`, vbFail: 'No se pudo cargar el fondo virtual (necesita internet la primera vez). Grabando sin fondo.', newScript: '+ Nuevo guion', import: 'Importar', untitled: 'Sin título', myScript: 'Mi guion',
     emptyList: 'Aún no hay guiones. Toca "Nuevo guion".', words: n => `${n} palabras`,
     titlePh: 'Título del guion', scriptPh: 'Pega o escribe el guion aquí',
     mode: 'Modo', mSpeed: 'Velocidad', mTime: 'Tiempo fijo', mWpm: 'Palabras por minuto', mSpeech: 'Seguir mi voz',
@@ -806,24 +810,38 @@ async function startStream() {
   const w = aw === ah ? sh : aw > ah ? lg : sh, h = aw === ah ? sh : aw > ah ? sh : lg;
   const f = $('ccam').value;
   try {
-    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: f }, width: { ideal: w }, height: { ideal: h }, aspectRatio: { ideal: aw / ah } }, audio: { noiseSuppression: $('cnoise').checked, echoCancellation: $('cecho').checked, autoGainControl: true, ...($('cmic').value && { deviceId: { exact: $('cmic').value } }) } });
+    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: f }, width: { ideal: w }, height: { ideal: h }, resizeMode: 'none' }, audio: { noiseSuppression: $('cnoise').checked, echoCancellation: $('cecho').checked, autoGainControl: true, ...($('cmic').value && { deviceId: { exact: $('cmic').value } }) } });
     listMics();
   } catch (e) { uiAlert(tr('camDenied', e.message)); return false; }
+  const vt = stream.getVideoTracks()[0], portrait = s => s.height > s.width;
+  if (aw !== ah && portrait(vt.getSettings()) !== ah > aw) { // celular entregou a camera girada: tenta de novo forcando a proporcao
+    try { await vt.applyConstraints({ width: { ideal: h }, height: { ideal: w }, resizeMode: 'none' }); } catch {}
+  }
   const v = $('cam');
   v.style.transform = f === 'user' ? 'scaleX(-1)' : 'none';
-  v.onloadedmetadata = () => { fitCam(); vbStart(); say(tr('camSize', v.videoWidth, v.videoHeight, Math.min(v.videoWidth, v.videoHeight) < sh)); };
-  v.srcObject = stream;
+  await new Promise(ok => {
+    const t = setTimeout(ok, 5000);
+    v.onloadedmetadata = () => {
+      clearTimeout(t); fitCam(); vbStart();
+      const wrong = aw !== ah && v.videoHeight > v.videoWidth !== ah > aw; // a gravacao sai como a camera entrega, sem corte nem zoom
+      say(wrong ? tr('camMis', v.videoWidth, v.videoHeight) : tr('camSize', v.videoWidth, v.videoHeight, Math.min(v.videoWidth, v.videoHeight) < sh));
+      ok();
+    };
+    v.srcObject = stream;
+  });
   return true;
 }
 
-// Prévia em tela cheia (corta o que sobra); o arquivo gravado mantém a proporção escolhida.
+// Prévia em tela cheia quando a câmera e a tela têm a mesma orientação; o arquivo gravado nunca é cortado.
 function fitCam() {
   const v = $('cam'), r = v.videoWidth / v.videoHeight;
   if (!r) return;
-  const bw = innerWidth, bh = innerHeight, w = Math.max(bw, bh * r), h = w / r; // cobre a tela toda, como teleprompter comum
+  const bw = innerWidth, bh = innerHeight, same = r > 1 === bw > bh;
+  const fill = q => { const w = same ? Math.max(bw, bh * q) : Math.min(bw, bh * q); return [w, w / q]; }; // mesma orientacao: preenche a tela; senao mostra inteiro
+  const [w, h] = fill(r);
   Object.assign(v.style, { width: w + 'px', height: h + 'px', left: (bw - w) / 2 + 'px', top: (bh - h) / 2 + 'px' });
   if (VB.cv) { // canvas na propria proporcao, preenchendo a tela
-    const rc = VB.cv.width / VB.cv.height, cw = Math.max(bw, bh * rc), ch = cw / rc;
+    const [cw, ch] = fill(VB.cv.width / VB.cv.height);
     Object.assign(VB.cv.style, { width: cw + 'px', height: ch + 'px', left: (bw - cw) / 2 + 'px', top: (bh - ch) / 2 + 'px', transform: v.style.transform });
   }
 }
@@ -832,7 +850,7 @@ addEventListener('resize', fitCam);
 // ---- Fundo virtual: MediaPipe separa a pessoa; o canvas compoe fundo + pessoa e e ele que vai para o MediaRecorder ----
 const MP = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14';
 const MODEL = 'https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_segmenter/float16/latest/selfie_segmenter.tflite';
-const VB = { seg: null, on: false, cv: null, out: null, t: 0, starting: null };
+const VB = { n: 0, seg: null, on: false, cv: null, out: null, t: 0, starting: null };
 const vbCfg = { m: 'none', c: '#1e3a5f' };
 try { Object.assign(vbCfg, JSON.parse(store('tp.vbg'))); } catch {}
 const saveVb = () => store('tp.vbg', JSON.stringify(vbCfg));
@@ -880,31 +898,30 @@ async function vbBg(W, H) {
   return c;
 }
 
+const chip = t => { const c = $('vbs'); c.textContent = t; c.hidden = !t; };
 function vbStop() {
   VB.on = false; VB.cur = null; clearTimeout(VB.t); $('vbp').hidden = true; VB.cv?.remove(); VB.cv = VB.out = null;
   const v = $('cam'); if (v) v.style.visibility = '';
 }
 
-// Roda quando ha fundo escolhido OU quando a camera entregou proporcao diferente da pedida (celular que gira a imagem):
-// o canvas sempre sai na proporcao escolhida, cortando o centro do quadro da camera.
+// Roda so com fundo escolhido; o canvas tem a proporcao exata da camera (sem corte nem zoom).
 function vbStart() {
   vbStop();
-  const v = $('cam'), [aw, ah] = $('casp').value.split(':').map(Number);
-  if (vbCfg.m === 'none' && Math.abs(v.videoWidth / v.videoHeight - aw / ah) < 0.05) return Promise.resolve();
+  const v = $('cam');
+  if (vbCfg.m === 'none') { chip(''); return Promise.resolve(); }
   return VB.starting = (async () => {
     if (vbCfg.m !== 'none') {
-      say(tr('vbLoad'));
-      try { VB.cur = await vbSeg(); } catch (e) { say(''); uiAlert(tr('vbFail') + ' (' + (e?.message || e) + ')'); return; }
-      say('');
+      chip(tr('vbLoad'));
+      try { VB.cur = await vbSeg(); } catch (e) { chip('⚠ ' + (e?.message || e)); uiAlert(tr('vbFail') + ' (' + (e?.message || e) + ')'); return; }
     }
-    const S = Math.min(720, +$('cres').value || 720), W = aw >= ah ? Math.round(S * aw / ah) : S, H = aw >= ah ? S : Math.round(S * ah / aw);
+    const k = Math.min(1, 720 / Math.min(v.videoWidth, v.videoHeight)), W = Math.round(v.videoWidth * k), H = Math.round(v.videoHeight * k);
     const mk = (w, h) => Object.assign(document.createElement('canvas'), { width: w, height: h });
     const cv = mk(W, H), pc = mk(W, H), mc = mk(1, 1), sm = mk(Math.ceil(W / 24), Math.ceil(H / 24));
     const cx = cv.getContext('2d'), px = pc.getContext('2d'), mx = mc.getContext('2d'), sx = sm.getContext('2d');
     cx.imageSmoothingQuality = 'high';
     let mi = null; VB.W = W; VB.H = H; VB.mode = vbCfg.m; VB.bg = await vbBg(W, H);
     if (!$('cam').srcObject) return; // fechou a camera enquanto carregava
-    cv.id = 'vc'; v.after(cv); v.style.visibility = 'hidden'; VB.cv = cv; VB.on = true; fitCam();
+    chip(tr('vbOn')); cv.id = 'vc'; v.after(cv); v.style.visibility = 'hidden'; VB.cv = cv; VB.on = true; fitCam();
     VB.out = new MediaStream([...cv.captureStream(30).getVideoTracks(), ...(stream?.getAudioTracks() || [])]);
     const onMask = r => {
       const m = r.confidenceMasks[0], a = m.getAsFloat32Array();
@@ -912,13 +929,14 @@ function vbStart() {
       const d = mi.data;
       for (let i = 0, j = 3; i < a.length; i++, j += 4) { const t = Math.min(1, Math.max(0, (a[i] - 0.3) / 0.4)); d[j] = t * t * (3 - 2 * t) * 255; }
       mx.putImageData(mi, 0, 0);
+      if (++VB.n % 20 === 0) { let c = 0; for (let j = 3; j < d.length; j += 4) if (d[j] > 128) c++; const pp = Math.round(100 * c / a.length); chip(tr('vbOn') + ' · ' + pp + '%' + (pp > 95 || pp < 2 ? ' ⚠' : '')); } // % do quadro reconhecido como pessoa (ajuda a diagnosticar)
     };
     const step = () => {
       if (!VB.on) return;
       try {
         const sw = v.videoWidth, sh = v.videoHeight;
         if (v.readyState >= 2 && sw && sh) {
-          const q = W / H, cw = sw / sh > q ? sh * q : sw, ch = sw / sh > q ? sh : sw / q, x0 = (sw - cw) / 2, y0 = (sh - ch) / 2; // recorte central na proporcao do canvas
+          const cw = sw, ch = sh, x0 = 0, y0 = 0;
           if (VB.mode === 'none' || !VB.cur) cx.drawImage(v, x0, y0, cw, ch, 0, 0, W, H);
           else {
             try { VB.cur.segmentForVideo(v, performance.now(), onMask); } catch (e) { VB.err = e; }
@@ -937,12 +955,26 @@ function vbStart() {
   })().finally(() => { VB.starting = null; });
 }
 
+const recording = () => recorder?.state === 'recording';
+// Mudanca que exige novo fluxo de video (fundo ligado do zero, proporcao): fecha o trecho gravado e comeca outro, sem mexer na leitura.
+async function retake(change) {
+  stopScroll(); stopSpeech();
+  const done = new Promise(ok => recorder.addEventListener('stop', ok, { once: true }));
+  recorder.stop(); await done;
+  await change();
+  say(tr('newTake'));
+  begin(true, true);
+}
 // Troca o fundo sem reiniciar a camera (vale tambem durante a gravacao: o canvas gravado so muda de fundo).
 async function vbSet(m) {
   vbCfg.m = m; saveVb();
   if (m === 'img' && !store('tp.vbgimg')) { $('cvf').click(); return; }
-  if (!VB.on) { if (m !== 'none') await vbStart(); return; } // fora da gravacao: liga o pipeline na hora
-  if (m !== 'none' && !VB.cur) { say(tr('vbLoad')); try { VB.cur = await vbSeg(); } catch (e) { say(''); uiAlert(tr('vbFail') + ' (' + (e?.message || e) + ')'); return; } say(''); }
+  if (!VB.on) { // pipeline desligado: fora da gravacao liga na hora; gravando, fecha o trecho e abre outro ja com fundo
+    if (m === 'none') return;
+    if (recording()) await retake(() => vbStart()); else await vbStart();
+    return;
+  }
+  if (m !== 'none' && !VB.cur) { chip(tr('vbLoad')); try { VB.cur = await vbSeg(); } catch (e) { chip('⚠ ' + (e?.message || e)); uiAlert(tr('vbFail') + ' (' + (e?.message || e) + ')'); return; } chip(tr('vbOn')); }
   VB.mode = m; VB.bg = await vbBg(VB.W, VB.H);
 }
 $('cvbg').value = vbCfg.m; $('cvc').value = vbCfg.c;
@@ -950,10 +982,13 @@ const vbUi = () => { $('cvcL').hidden = vbCfg.m !== 'color'; $('cvfL').hidden = 
 vbUi();
 $('cvbg').onchange = () => { vbCfg.m = $('cvbg').value; saveVb(); vbUi(); if (vbCfg.m === 'img' && !store('tp.vbgimg')) $('cvf').click(); if (vbCfg.m !== 'none') vbSeg().catch(() => {}); }; // ja baixa o modelo ao escolher
 $('cvc').oninput = () => { vbCfg.c = $('cvc').value; saveVb(); };
+$('aspBtn').onclick = async () => {
+  const go = async () => { $('casp').value = $('casp').value === '9:16' ? '16:9' : '9:16'; saveCam(); await startStream(); };
+  if (recording()) await retake(go); else if ($('rec').dataset.state !== 'stop') await go();
+};
 $('vbBtn').onclick = () => {
   const p = $('vbp');
   if (!p.hidden) { p.hidden = true; return; }
-  if ($('rec').dataset.state === 'stop' && !VB.on) { say(tr('vbNoRec')); return; }
   p.textContent = '';
   [...$('cvbg').options].forEach(o => {
     const b = document.createElement('button'); b.textContent = o.textContent; b.classList.toggle('on', o.value === vbCfg.m);
